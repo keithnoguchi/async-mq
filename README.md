@@ -2,6 +2,12 @@
 
 [RabbitMQ] with [Crate lapin_futures] for fun.
 
+[![DroneCI]](https://cloud.drone.io/keithnoguchi/rustmq)
+[![CircleCI]](https://circleci.com/gh/keithnoguchi/workflows/rustmq)
+
+[DroneCI]: https://cloud.drone.io/api/badges/keithnoguchi/rustmq/status.svg
+[CircleCI]: https://circleci.com/gh/keithnoguchi/rustmq.svg?style=svg
+
 ## References
 
 - [RabbitMQ]: The most widely deployed open source message broker
