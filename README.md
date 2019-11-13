@@ -12,11 +12,14 @@
 
 - [basic]: [Basic futures] example
 - [peer]: [Getting asynchronous] example
+- [combinator]: [Combinators] example
 
 [basic]: src/basic.rs
 [peer]: src/peer.rs
+[combinator]: src/combinator.rs
 [basic futures]: https://tokio.rs/docs/futures/basic/
 [getting asynchronous]: https://tokio.rs/docs/futures/getting_asynchronous/
+[combinators]: https://tokio.rs/docs/futures/combinators/
 
 ## Execution
 

@@ -3,30 +3,40 @@ use std::thread;
 use tokio::{self, prelude::*};
 
 fn main() {
-    let addr: std::net::SocketAddr = "127.0.0.1:6142".parse().unwrap();
-    let client_addr = addr;
+    let addr1: std::net::SocketAddr = "127.0.0.1:6142".parse().unwrap();
+    let addr2 = addr1;
     let server = thread::spawn(move || {
-        server(&addr);
+        server(&addr1);
     });
-    let peer_addr = client_addr;
+    let addr1 = addr2;
     let client = thread::spawn(move || {
-        client(&client_addr);
+        client(&addr2);
     });
     let basic = thread::spawn(|| {
         basic();
     });
-    let hello_addr = peer_addr;
+    let addr2 = addr1;
     let peer = thread::spawn(move || {
-        peer(&peer_addr);
+        peer(&addr1);
     });
     let hello = thread::spawn(move || {
-        hello(&hello_addr);
+        hello(&addr2);
     });
+    let mapper = thread::spawn(move || {
+        mapper();
+    });
+    mapper.join().unwrap();
     hello.join().unwrap();
     peer.join().unwrap();
     basic.join().unwrap();
     client.join().unwrap();
     server.join().unwrap();
+}
+
+// https://tokio.rs/docs/futures/combinators/
+fn mapper() {
+    let fut = rustmq::combinator::HelloWorld;
+    tokio::run(fut.map(|msg| println!("mapper: {}", msg)));
 }
 
 // https://tokio.rs/docs/futures/getting_asynchronous/
