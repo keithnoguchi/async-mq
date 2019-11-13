@@ -24,6 +24,8 @@ fn hello() {
     use rustmq::hello;
     let fut = hello::Display(hello::HelloWorld);
     tokio::run(fut);
+    let fut = hello::BetterDisplay(hello::HelloWorld);
+    tokio::run(fut);
 }
 
 // https://tokio.rs/docs/getting-started/echo/

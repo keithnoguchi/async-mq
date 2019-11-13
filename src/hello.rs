@@ -33,3 +33,21 @@ where
         Ok(futures::Async::Ready(()))
     }
 }
+
+pub struct BetterDisplay<T>(pub T);
+
+impl<T> futures::Future for BetterDisplay<T>
+where
+    T: futures::Future,
+    T::Item: std::fmt::Display,
+{
+    type Item = ();
+    type Error = T::Error;
+
+    fn poll(&mut self) -> futures::Poll<(), T::Error> {
+        const NAME: &str = "hello::BetterDisplay";
+        let value = futures::try_ready!(self.0.poll());
+        println!("[{}]: {}", NAME, value);
+        Ok(futures::Async::Ready(()))
+    }
+}
