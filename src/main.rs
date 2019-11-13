@@ -3,6 +3,9 @@ use std::thread;
 use tokio::{self, prelude::*};
 
 fn main() {
+    let hello = thread::spawn(|| {
+        hello();
+    });
     let addr: std::net::SocketAddr = "127.0.0.1:6142".parse().unwrap();
     let client_addr = addr;
     let server = thread::spawn(move || {
@@ -11,8 +14,16 @@ fn main() {
     let client = thread::spawn(move || {
         client(&client_addr);
     });
+    hello.join().unwrap();
     client.join().unwrap();
     server.join().unwrap();
+}
+
+// https://tokio.rs/docs/futures/basic/
+fn hello() {
+    use rustmq::hello;
+    let fut = hello::Display(hello::HelloWorld);
+    tokio::run(fut);
 }
 
 // https://tokio.rs/docs/getting-started/echo/
