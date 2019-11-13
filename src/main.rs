@@ -33,9 +33,10 @@ fn peer(addr: &std::net::SocketAddr) {
 
 // https://tokio.rs/docs/futures/basic/
 fn basic() {
-    let fut = rustmq::basic::Display(rustmq::basic::HelloWorld);
+    let count = 10;
+    let fut = rustmq::basic::Display(rustmq::basic::HelloWorld::new(count));
     tokio::run(fut);
-    let fut = rustmq::basic::BetterDisplay(rustmq::basic::HelloWorld);
+    let fut = rustmq::basic::BetterDisplay(rustmq::basic::HelloWorld::new(count));
     tokio::run(fut);
 }
 

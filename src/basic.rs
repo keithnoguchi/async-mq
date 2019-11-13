@@ -2,13 +2,29 @@
 // https://tokio.rs/docs/futures/basic/
 use futures;
 
-pub struct HelloWorld;
+pub struct HelloWorld {
+    limit: u32,
+    count: u32,
+}
+
+impl HelloWorld {
+    pub fn new(limit: u32) -> Self {
+        Self { limit, count: 0 }
+    }
+}
 
 impl futures::Future for HelloWorld {
     type Item = String;
     type Error = ();
     fn poll(&mut self) -> futures::Poll<Self::Item, Self::Error> {
-        Ok(futures::Async::Ready("hello world".to_string()))
+        const NAME: &str = "basic::HelloWorld";
+        self.count += 1;
+        if self.count < self.limit {
+            eprintln!("[{}]: count={}", NAME, self.count);
+            Ok(futures::Async::NotReady)
+        } else {
+            Ok(futures::Async::Ready("hello world".to_string()))
+        }
     }
 }
 
@@ -26,7 +42,10 @@ where
         const NAME: &str = "basic::Display";
         let value = match self.0.poll() {
             Ok(futures::Async::Ready(value)) => value,
-            Ok(futures::Async::NotReady) => return Ok(futures::Async::NotReady),
+            Ok(futures::Async::NotReady) => {
+                eprintln!("[{}]: Async::NotReady", NAME);
+                return Ok(futures::Async::NotReady);
+            }
             Err(err) => return Err(err),
         };
         println!("[{}]: {}", NAME, value);
@@ -57,12 +76,14 @@ mod tests {
     use tokio;
     #[test]
     fn run_hello_display() {
-        let fut = super::Display(super::HelloWorld);
+        let count = 1;
+        let fut = super::Display(super::HelloWorld::new(count));
         tokio::run(fut);
     }
     #[test]
     fn run_hello_better_display() {
-        let fut = super::BetterDisplay(super::HelloWorld);
+        let count = 1;
+        let fut = super::BetterDisplay(super::HelloWorld::new(count));
         tokio::run(fut);
     }
 }
