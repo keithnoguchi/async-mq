@@ -33,7 +33,7 @@ fn peer(addr: &std::net::SocketAddr) {
 
 // https://tokio.rs/docs/futures/basic/
 fn basic() {
-    let count = 10;
+    let count = 1;
     let fut = rustmq::basic::Display(rustmq::basic::HelloWorld::new(count));
     tokio::run(fut);
     let fut = rustmq::basic::BetterDisplay(rustmq::basic::HelloWorld::new(count));
@@ -72,7 +72,7 @@ fn client(addr: &std::net::SocketAddr) {
     const NAME: &str = "client";
     let fut = tokio::net::TcpStream::connect(addr)
         .and_then(|stream| {
-            println!("created stream");
+            println!("[{}]: created stream", NAME);
             tokio::io::write_all(stream, "hello world\n").then(|ret| {
                 println!("[{}]: wrote to stream; success={:?}", NAME, ret.is_ok());
                 Ok(())
