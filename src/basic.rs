@@ -51,3 +51,18 @@ where
         Ok(futures::Async::Ready(()))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use tokio;
+    #[test]
+    fn run_hello_display() {
+        let fut = super::Display(super::HelloWorld);
+        tokio::run(fut);
+    }
+    #[test]
+    fn run_hello_better_display() {
+        let fut = super::BetterDisplay(super::HelloWorld);
+        tokio::run(fut);
+    }
+}
