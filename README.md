@@ -11,9 +11,12 @@
 ## Modules
 
 - [basic]: [Basic futures] example
+- [peer]: [Getting asynchronous] example
 
 [basic]: src/basic.rs
+[peer]: src/peer.rs
 [basic futures]: https://tokio.rs/docs/futures/basic/
+[getting asynchronous]: https://tokio.rs/docs/futures/getting_asynchronous/
 
 ## Execution
 
@@ -23,16 +26,24 @@ which is a wrapper of `cargo run` as in [Makefile]:
 
 ```sh
 air1$ make run
-    Finished dev [unoptimized + debuginfo] target(s) in 0.02s
+   Compiling rustmq v0.1.0 (/home/kei/git/rustmq)
+    Finished dev [unoptimized + debuginfo] target(s) in 0.82s
      Running `target/debug/rustmq`
 [server]: server running on 127.0.0.1:6142
 [client]: About to create the stream and write to it...
+[server]: connection from TcpStream { addr: V4(127.0.0.1:6142), pee
+r: V4(127.0.0.1:50692), fd: 54 }
+[peer::GetPeerAddr]: peer address = 127.0.0.1:6142
+[server]: connection from TcpStream { addr: V4(127.0.0.1:6142), pee
+r: V4(127.0.0.1:50694), fd: 5 }
 created stream
 [client]: wrote to stream; success=true
-[server]: connection from TcpStream { addr: V4(127.0.0.1:6142), peer: V4(127.0.0.1:50054), fd: 29 }
-[server]: wrote 12 bytes
+[server]: error: Connection reset by peer (os error 104)
 [client]: Stream has been created and written to.
-^Cmake: *** [Makefile:11: run] Interrupt
+[server]: wrote 0 bytes
+[basic::Display]: hello world
+[basic::BetterDisplay]: hello world
+^C
 ```
 
 [main.rs]: src/main.rs

@@ -3,28 +3,39 @@ use std::thread;
 use tokio::{self, prelude::*};
 
 fn main() {
-    let hello = thread::spawn(|| {
-        hello();
-    });
     let addr: std::net::SocketAddr = "127.0.0.1:6142".parse().unwrap();
     let client_addr = addr;
+    let peer_addr = addr;
     let server = thread::spawn(move || {
         server(&addr);
     });
     let client = thread::spawn(move || {
         client(&client_addr);
     });
-    hello.join().unwrap();
+    let basic = thread::spawn(|| {
+        basic();
+    });
+    let peer = thread::spawn(move || {
+        peer(&peer_addr);
+    });
+    basic.join().unwrap();
+    peer.join().unwrap();
     client.join().unwrap();
     server.join().unwrap();
 }
 
-// https://tokio.rs/docs/futures/basic/
-fn hello() {
-    use rustmq::basic;
-    let fut = basic::Display(basic::HelloWorld);
+// https://tokio.rs/docs/futures/getting_asynchronous/
+fn peer(addr: &std::net::SocketAddr) {
+    let conn = tokio::net::tcp::TcpStream::connect(&addr);
+    let fut = rustmq::peer::GetPeerAddr { conn };
     tokio::run(fut);
-    let fut = basic::BetterDisplay(basic::HelloWorld);
+}
+
+// https://tokio.rs/docs/futures/basic/
+fn basic() {
+    let fut = rustmq::basic::Display(rustmq::basic::HelloWorld);
+    tokio::run(fut);
+    let fut = rustmq::basic::BetterDisplay(rustmq::basic::HelloWorld);
     tokio::run(fut);
 }
 
