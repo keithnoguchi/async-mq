@@ -1,8 +1,16 @@
 // SPDX-License-Identifier: GPL-2.0
+use std::thread;
 use tokio::prelude::*;
 use tokio::{self, net};
 
 fn main() {
+    let t = thread::spawn(|| {
+        client();
+    });
+    t.join().unwrap();
+}
+
+fn client() {
     // https://tokio.rs/docs/getting-started/hello-world/
     let addr = "127.0.0.1:6142".parse().unwrap();
     let f = net::TcpStream::connect(&addr)
