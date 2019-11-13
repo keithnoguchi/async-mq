@@ -26,9 +26,14 @@ fn main() {
     let mapper = thread::spawn(|| {
         mapper();
     });
+    let addr2 = addr1;
     let and_then_thread = thread::spawn(move || {
         and_then_thread(&addr1);
     });
+    let and_then_and_then_thread = thread::spawn(move || {
+        and_then_and_then_thread(&addr2);
+    });
+    and_then_and_then_thread.join().unwrap();
     and_then_thread.join().unwrap();
     mapper.join().unwrap();
     hello.join().unwrap();
@@ -36,6 +41,19 @@ fn main() {
     basic.join().unwrap();
     client.join().unwrap();
     server.join().unwrap();
+}
+
+fn and_then_and_then_thread(addr: &std::net::SocketAddr) {
+    const NAME: &str = "and_then_and_then_thread";
+    let fut = tokio::net::tcp::TcpStream::connect(&addr)
+        .and_then(|sock| tokio::io::write_all(sock, b"hello world"))
+        .and_then(|(sock, _)| tokio::io::read_exact(sock, vec![0; 10]))
+        .and_then(|(_, buf)| {
+            println!("[{}]: got {:?}", NAME, buf);
+            Ok(())
+        })
+        .map_err(|err| eprintln!("[{}]: error {}", NAME, err));
+    tokio::run(fut);
 }
 
 fn and_then_thread(addr: &std::net::SocketAddr) {
@@ -49,8 +67,9 @@ fn and_then_thread(addr: &std::net::SocketAddr) {
 
 // https://tokio.rs/docs/futures/combinators/
 fn mapper() {
+    const NAME: &str = "mapper";
     let fut = rustmq::combinator::HelloWorld;
-    tokio::run(fut.map(|msg| println!("mapper: {}", msg)));
+    tokio::run(fut.map(|msg| println!("[{}]: {}", NAME, msg)));
 }
 
 // https://tokio.rs/docs/futures/getting_asynchronous/
