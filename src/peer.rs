@@ -1,7 +1,14 @@
 // SPDX-License-Identifier: GPL-2.0
-// https://tokio.rs/docs/futures/getting_asynchronous/
+use bytes;
 use futures;
 use tokio;
+
+// https://tokio.rs/docs/futures/getting_asynchronous/
+#[allow(dead_code)]
+enum HelloWorld {
+    Connecting(tokio::net::tcp::ConnectFuture),
+    Connected(tokio::net::tcp::TcpStream, std::io::Cursor<bytes::Bytes>),
+}
 
 pub struct GetPeerAddr {
     pub conn: tokio::net::tcp::ConnectFuture,
