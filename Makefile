@@ -11,8 +11,10 @@ run:
 	@cargo run
 install:
 	@cargo install --force --path .
-doc:
-	@cargo doc --all --open
+doc: doc-book doc-std
+	@cargo doc --all --open &
+doc-%:
+	@rustup doc --$* &
 fmt:
 	@rustfmt --edition 2018 --check src/*.rs
 lint:
