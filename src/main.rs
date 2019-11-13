@@ -21,10 +21,10 @@ fn main() {
 
 // https://tokio.rs/docs/futures/basic/
 fn hello() {
-    use rustmq::hello;
-    let fut = hello::Display(hello::HelloWorld);
+    use rustmq::basic;
+    let fut = basic::Display(basic::HelloWorld);
     tokio::run(fut);
-    let fut = hello::BetterDisplay(hello::HelloWorld);
+    let fut = basic::BetterDisplay(basic::HelloWorld);
     tokio::run(fut);
 }
 

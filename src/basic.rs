@@ -23,7 +23,7 @@ where
     type Error = T::Error;
 
     fn poll(&mut self) -> futures::Poll<(), T::Error> {
-        const NAME: &str = "hello::Display";
+        const NAME: &str = "basic::Display";
         let value = match self.0.poll() {
             Ok(futures::Async::Ready(value)) => value,
             Ok(futures::Async::NotReady) => return Ok(futures::Async::NotReady),
@@ -45,7 +45,7 @@ where
     type Error = T::Error;
 
     fn poll(&mut self) -> futures::Poll<(), T::Error> {
-        const NAME: &str = "hello::BetterDisplay";
+        const NAME: &str = "basic::BetterDisplay";
         let value = futures::try_ready!(self.0.poll());
         println!("[{}]: {}", NAME, value);
         Ok(futures::Async::Ready(()))

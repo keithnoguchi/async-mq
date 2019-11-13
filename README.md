@@ -8,6 +8,13 @@
 [DroneCI]: https://cloud.drone.io/api/badges/keithnoguchi/rustmq/status.svg
 [CircleCI]: https://circleci.com/gh/keithnoguchi/rustmq.svg?style=svg
 
+## Modules
+
+- [basic]: [Basic futures] example
+
+[basic]: src/basic.rs
+[basic futures]: https://tokio.rs/docs/futures/basic/
+
 ## Execution
 
 Currently, [main.rs] is the demonstration of [tokio getting-started] guide
