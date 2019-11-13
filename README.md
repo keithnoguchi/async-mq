@@ -11,7 +11,7 @@
 ## References
 
 - [RabbitMQ]: The most widely deployed open source message broker
-- [Crate tokio]: The asynchronous run-time for the Rust
+- [Crate tokio]: The asynchronous run-time for the Rust Programming Language
 - [Crate lapin_futures]: [Crate futures]-0.1 based [Crate lapin]
 - [Crate lapin]: RabbitMQ crate based on AMQP 0.9.1 specification
 
