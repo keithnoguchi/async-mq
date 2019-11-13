@@ -9,9 +9,7 @@ impl futures::Future for HelloWorld {
     fn poll(&mut self) -> futures::Poll<Self::Item, Self::Error> {
         const NAME: &str = "combinator::HelloWorld";
         eprintln!("[{}] poll()", NAME);
-        Ok(futures::Async::Ready(
-            format!("[{}]: hello world", NAME).to_string(),
-        ))
+        Ok(futures::Async::Ready(format!("[{}]: hello world", NAME)))
     }
 }
 
