@@ -5,23 +5,35 @@ use tokio::{self, prelude::*};
 fn main() {
     let addr: std::net::SocketAddr = "127.0.0.1:6142".parse().unwrap();
     let client_addr = addr;
-    let peer_addr = addr;
     let server = thread::spawn(move || {
         server(&addr);
     });
+    let peer_addr = client_addr;
     let client = thread::spawn(move || {
         client(&client_addr);
     });
     let basic = thread::spawn(|| {
         basic();
     });
+    let hello_addr = peer_addr;
     let peer = thread::spawn(move || {
         peer(&peer_addr);
     });
-    basic.join().unwrap();
+    let hello = thread::spawn(move || {
+        hello(&hello_addr);
+    });
+    hello.join().unwrap();
     peer.join().unwrap();
+    basic.join().unwrap();
     client.join().unwrap();
     server.join().unwrap();
+}
+
+// https://tokio.rs/docs/futures/getting_asynchronous/
+fn hello(addr: &std::net::SocketAddr) {
+    let conn = tokio::net::tcp::TcpStream::connect(&addr);
+    let fut = rustmq::peer::HelloWorld::Connecting(conn);
+    tokio::run(fut.map_err(|err| eprintln!("{0}", err)));
 }
 
 // https://tokio.rs/docs/futures/getting_asynchronous/

@@ -5,9 +5,37 @@ use tokio;
 
 // https://tokio.rs/docs/futures/getting_asynchronous/
 #[allow(dead_code)]
-enum HelloWorld {
+pub enum HelloWorld {
     Connecting(tokio::net::tcp::ConnectFuture),
     Connected(tokio::net::tcp::TcpStream, std::io::Cursor<bytes::Bytes>),
+}
+
+impl futures::Future for HelloWorld {
+    type Item = ();
+    type Error = std::io::Error;
+    fn poll(&mut self) -> futures::Poll<Self::Item, Self::Error> {
+        use bytes::Buf;
+        use tokio::io::AsyncWrite;
+        const NAME: &str = "peer::HelloWorld";
+        println!("[{}]: poll()", NAME);
+        loop {
+            match self {
+                Self::Connecting(ref mut f) => {
+                    let sock = futures::try_ready!(f.poll());
+                    let data = std::io::Cursor::new(bytes::Bytes::from_static(b"hello world"));
+                    println!("[{}]: Connecting", NAME);
+                    *self = Self::Connected(sock, data);
+                }
+                Self::Connected(ref mut sock, ref mut data) => {
+                    println!("[{}]: Connected", NAME);
+                    while data.has_remaining() {
+                        futures::try_ready!(sock.write_buf(data));
+                    }
+                    return Ok(futures::Async::Ready(()));
+                }
+            }
+        }
+    }
 }
 
 pub struct GetPeerAddr {
