@@ -1,6 +1,6 @@
 # rustmq
 
-[RabbitMQ] with [Crate lapin_futures] for fun.
+[RabbitMQ] with [Crate lapin_futures] and [Crate tokio] for fun.
 
 [![DroneCI]](https://cloud.drone.io/keithnoguchi/rustmq)
 [![CircleCI]](https://circleci.com/gh/keithnoguchi/workflows/rustmq)
