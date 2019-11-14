@@ -10,17 +10,20 @@
 
 ## Modules
 
+- [client]: [Hello World] client example
 - [basic]: [Basic futures] example
 - [peer]: [Getting asynchronous] example
 - [combinator]: [Combinators] example
 - [fibonacci]: [Streams] example
 - [spawn]: [Spawning] example
 
+[client]: src/client.rs
 [basic]: src/basic.rs
 [peer]: src/peer.rs
 [combinator]: src/combinator.rs
 [fibonacci]: src/fibonacci.rs
 [spawn]: src/spawn.rs
+[hello world]: https://tokio.rs/docs/getting-started/hello-world/
 [basic futures]: https://tokio.rs/docs/futures/basic/
 [getting asynchronous]: https://tokio.rs/docs/futures/getting_asynchronous/
 [combinators]: https://tokio.rs/docs/futures/combinators/
