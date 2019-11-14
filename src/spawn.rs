@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0
-use futures::Future;
+use futures::{sync::mpsc, Future};
 use std::net::SocketAddr;
 use tokio;
 
@@ -26,11 +26,11 @@ pub fn server(addr: &SocketAddr) -> impl Future<Item = (), Error = ()> {
 }
 
 pub fn background(addr: &SocketAddr) -> impl Future<Item = (), Error = ()> {
+    const NAME: &str = "spawn::background";
     let addr = *addr;
     futures::future::lazy(move || {
         use futures::Stream;
-        const NAME: &str = "spawn::background";
-        let (_tx, rx) = tokio::sync::mpsc::channel(1_024);
+        let (_tx, rx) = mpsc::channel(1_024);
         tokio::spawn(work(rx));
         tokio::net::tcp::TcpListener::bind(&addr)
             .unwrap()
@@ -43,8 +43,27 @@ pub fn background(addr: &SocketAddr) -> impl Future<Item = (), Error = ()> {
     })
 }
 
-fn work(_rx: tokio::sync::mpsc::Receiver<usize>) -> impl Future<Item = (), Error = ()> {
-    println!("doing nothing for now...");
+fn work(rx: mpsc::Receiver<usize>) -> impl Future<Item = (), Error = ()> {
+    use futures::Stream;
+    const NAME: &str = "spawn::work";
+    #[derive(Eq, PartialEq)]
+    enum Item {
+        Value(usize),
+        Tick,
+        Done,
+    }
+    // 30sec tick.
+    let tick_dur = std::time::Duration::from_secs(30);
+    let interval = tokio::timer::Interval::new_interval(tick_dur)
+        .map(|_| Item::Tick)
+        .map_err(|err| eprintln!("[{}]: {}", NAME, err));
+    // Turn the stream into a sequence of:
+    // Item(Value), Item(Value), Tick, Item(Value)... Done.
+    let _items = rx
+        .map(Item::Value)
+        .chain(futures::stream::once(Ok(Item::Done)))
+        .select(interval)
+        .take_while(|item| futures::future::ok(*item != Item::Done));
     futures::future::ok::<(), ()>(())
 }
 
@@ -80,7 +99,7 @@ mod tests {
             },
         ];
         for t in &tests {
-            let (_, rx) = tokio::sync::mpsc::channel(t.bufsiz);
+            let (_, rx) = futures::sync::mpsc::channel(t.bufsiz);
             debug_assert_eq!(Ok(()), super::work(rx).wait(), "{}", t.name);
         }
     }
@@ -139,9 +158,9 @@ mod tests {
             let name = t.name;
             let count = t.count;
             tokio::run(lazy(move || {
-                use futures::{future::Future, sync::oneshot};
+                use futures::Future;
                 for _ in 0..count {
-                    let (tx, rx) = oneshot::channel();
+                    let (tx, rx) = futures::sync::oneshot::channel();
                     tokio::spawn(lazy(move || {
                         tx.send(format!("{}", name))
                             .map_err(move |err| panic!("[{}] error: {}", name, err))
@@ -162,9 +181,8 @@ mod tests {
     fn mpsc() {
         use futures::future::lazy;
         tokio::run(lazy(|| {
-            use futures::sync::mpsc;
             use futures::{future::Future, sink::Sink, stream, Stream};
-            let (tx, rx) = mpsc::channel(1_024);
+            let (tx, rx) = futures::sync::mpsc::channel(1_024);
             tokio::spawn({
                 stream::iter_ok(0..10)
                     .fold(tx, |tx, i| {
