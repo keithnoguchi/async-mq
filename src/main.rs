@@ -30,10 +30,13 @@ fn main() {
     let and_then_thread = thread::spawn(move || {
         and_then_thread(&addr1);
     });
-    let and_then_and_then_thread = thread::spawn(move || {
-        and_then_and_then_thread(&addr2);
+    let runtime = thread::spawn(move || {
+        tokio::run(futures::future::lazy(move || {
+            tokio::spawn(and_then_and_then(&addr2));
+            Ok(())
+        }))
     });
-    and_then_and_then_thread.join().unwrap();
+    runtime.join().unwrap();
     and_then_thread.join().unwrap();
     mapper.join().unwrap();
     hello.join().unwrap();
@@ -43,17 +46,16 @@ fn main() {
     server.join().unwrap();
 }
 
-fn and_then_and_then_thread(addr: &std::net::SocketAddr) {
-    const NAME: &str = "and_then_and_then_thread";
-    let fut = tokio::net::tcp::TcpStream::connect(&addr)
+fn and_then_and_then(addr: &std::net::SocketAddr) -> impl futures::Future<Item = (), Error = ()> {
+    const NAME: &str = "and_then_and_then";
+    tokio::net::tcp::TcpStream::connect(&addr)
         .and_then(|sock| tokio::io::write_all(sock, b"hello world"))
         .and_then(|(sock, _)| tokio::io::read_exact(sock, vec![0; 10]))
         .and_then(|(_, buf)| {
             println!("[{}]: got {:?}", NAME, buf);
             Ok(())
         })
-        .map_err(|err| eprintln!("[{}]: error {}", NAME, err));
-    tokio::run(fut);
+        .map_err(|err| eprintln!("[{}]: error {}", NAME, err))
 }
 
 fn and_then_thread(addr: &std::net::SocketAddr) {

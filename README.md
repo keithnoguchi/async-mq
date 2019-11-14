@@ -76,7 +76,7 @@ created stream
 [crate lapin]: https://docs.rs/lapin/0.28.2/lapin/
 [crate tokio]: https://tokio.rs/
 [crate tokio v0.2]: https://docs.rs/tokio/0.2.0-alpha.6/tokio/
-[crate tokio v0.1]: https://docs.rs/crate/tokio/0.1.22
+[crate tokio v0.1]: https://docs.rs/tokio/0.1.22/tokio/
 [tokio getting-started]: https://tokio.rs/docs/getting-started/hello-world/
 [tokio runtime]: https://tokio.rs/docs/getting-started/runtime/
 [crate futures]: http://futures.rs/
