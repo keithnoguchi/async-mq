@@ -59,48 +59,62 @@ fn work(rx: mpsc::Receiver<usize>) -> impl Future<Item = (), Error = ()> {
         .map_err(|err| eprintln!("[{}]: {}", NAME, err));
     // Turn the stream into a sequence of:
     // Item(Value), Item(Value), Tick, Item(Value)... Done.
-    let _items = rx
+    let items = rx
         .map(Item::Value)
         .chain(futures::stream::once(Ok(Item::Done)))
         .select(interval)
         .take_while(|item| futures::future::ok(*item != Item::Done));
-    futures::future::ok::<(), ()>(())
+    // our logic future.
+    items
+        .fold(0, |num, item| match item {
+            Item::Value(v) => futures::future::ok(num + v),
+            Item::Tick => {
+                println!("bytes read = {}", num);
+                futures::future::ok(0)
+            }
+            _ => unreachable!(),
+        })
+        .map(|_| ())
 }
 
 #[cfg(test)]
 mod tests {
     #[test]
     fn work() {
-        use futures::Future;
         struct Test {
-            name: &'static str,
+            _name: &'static str,
             bufsiz: usize,
         }
         let tests = [
             Test {
-                name: "one byte buffer",
+                _name: "one byte buffer",
                 bufsiz: 1,
             },
             Test {
-                name: "two bytes buffer",
+                _name: "two bytes buffer",
                 bufsiz: 2,
             },
             Test {
-                name: "512 bytes buffer",
+                _name: "512 bytes buffer",
                 bufsiz: 512,
             },
             Test {
-                name: "1,024 bytes buffer",
+                _name: "1,024 bytes buffer",
                 bufsiz: 1_024,
             },
             Test {
-                name: "4K bytes buffer",
+                _name: "4K bytes buffer",
                 bufsiz: 4_094,
             },
         ];
         for t in &tests {
-            let (_, rx) = futures::sync::mpsc::channel(t.bufsiz);
-            debug_assert_eq!(Ok(()), super::work(rx).wait(), "{}", t.name);
+            use futures::{Future, Sink};
+            let (tx, rx) = futures::sync::mpsc::channel(t.bufsiz);
+            tokio::run(futures::future::lazy(|| {
+                tokio::spawn({ tx.send(1).map(|_| ()).map_err(|err| eprintln!("{}", err)) });
+                tokio::spawn(super::work(rx));
+                Ok(())
+            }));
         }
     }
     #[test]
