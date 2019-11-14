@@ -61,15 +61,15 @@ mod tests {
                 for _ in 0..count {
                     let (tx, rx) = oneshot::channel();
                     tokio::spawn(lazy(move || {
-                        tx.send(format!("{}", name)).unwrap();
-                        Ok(())
+                        tx.send(format!("{}", name))
+                            .map_err(move |err| panic!("[{}] error: {}", name, err))
                     }));
                     tokio::spawn(lazy(move || {
                         rx.and_then(|msg| {
                             println!("[{}] got it!", msg);
                             Ok(())
                         })
-                        .map_err(move |err| eprintln!("[{}] error: {}", name, err))
+                        .map_err(move |err| panic!("[{}] error: {}", name, err))
                     }));
                 }
                 Ok(())
