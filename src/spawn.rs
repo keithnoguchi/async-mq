@@ -3,7 +3,7 @@
 mod tests {
     use futures;
     #[test]
-    fn lazy_run() {
+    fn lazy() {
         struct Test {
             name: &'static str,
             count: usize,
@@ -31,5 +31,21 @@ mod tests {
                 Ok(())
             }));
         }
+    }
+    #[test]
+    fn oneshot() {
+        use futures::future::{lazy, Future};
+        tokio::run(lazy(|| {
+            let (tx, rx) = futures::sync::oneshot::channel();
+            tokio::spawn(lazy(|| {
+                tx.send("sending it").unwrap();
+                Ok(())
+            }));
+            rx.and_then(|msg| {
+                println!("Got {}!", msg);
+                Ok(())
+            })
+            .map_err(|err| eprintln!("receive error: {}", err))
+        }));
     }
 }
