@@ -30,6 +30,7 @@ pub fn background(addr: &SocketAddr) -> impl Future<Item = (), Error = ()> {
     futures::future::lazy(move || {
         use futures::Stream;
         const NAME: &str = "spawn::background";
+        tokio::spawn(work());
         tokio::net::tcp::TcpListener::bind(&addr)
             .unwrap()
             .incoming()
@@ -39,6 +40,11 @@ pub fn background(addr: &SocketAddr) -> impl Future<Item = (), Error = ()> {
             })
             .map_err(|err| eprintln!("[{}]: {:?}", NAME, err))
     })
+}
+
+fn work() -> impl Future<Item = (), Error = ()> {
+    println!("doing nothing for now...");
+    futures::future::ok::<(), ()>(())
 }
 
 #[cfg(test)]

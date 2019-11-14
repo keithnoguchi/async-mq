@@ -113,6 +113,8 @@ $ make run
 - [Crate futures]:
   - [Crate futures v0.3]: Abstructions for Asynchronous Programming
   - [Crate futures v0.1]: Zero-cost Futures in Rust
+- [Future by example]: Get start working with Rust's Future quickly
+- [Tokio internals]: Understanding Rust's asynchronous I/O framework from the bottom up
 - [Original futures design]: Original futures design by [Aaron Turon]
 
 [RabbitMQ]: https://www.rabbitmq.com
@@ -126,5 +128,7 @@ $ make run
 [crate futures]: http://futures.rs/
 [crate futures v0.3]: https://docs.rs/futures/0.3.1/
 [crate futures v0.1]: https://docs.rs/futures/0.1.29/
+[future by example]: https://docs.rs/future-by-example/0.1.0/future_by_example/
+[tokio internals]: https://cafbit.com/post/tokio_internals/
 [original futures design]: https://aturon.github.io/blog/2016/09/07/futures-design/
 [Aaron Turon]: https://aturon.github.io/blog/
