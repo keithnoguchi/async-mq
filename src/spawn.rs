@@ -11,7 +11,15 @@ pub fn server(addr: &SocketAddr) -> impl Future<Item = (), Error = ()> {
         .unwrap()
         .incoming()
         .for_each(|sock| {
-            println!("[{}]: {:?}", NAME, sock);
+            let peer = sock.peer_addr().unwrap();
+            tokio::spawn({
+                println!("[{}]: handling {}", NAME, sock.peer_addr().unwrap());
+                tokio::io::write_all(sock, "hello world")
+                    // Drop the socket
+                    .map(|_| ())
+                    .map_err(|err| eprintln!("[{}]: {:?}", NAME, err))
+            });
+            println!("[{}]: spawned {} handler", NAME, peer);
             Ok(())
         })
         .map_err(|err| eprintln!("[{}]: {}", NAME, err))
