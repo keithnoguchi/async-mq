@@ -73,7 +73,6 @@ where
 
 #[cfg(test)]
 mod tests {
-    use tokio;
     #[test]
     fn run_hello_display() {
         let count = 1;

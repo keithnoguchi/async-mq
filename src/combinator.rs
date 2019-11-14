@@ -18,7 +18,6 @@ mod tests {
     #[test]
     fn map() {
         use futures::Future;
-        use tokio;
         let fut = super::HelloWorld;
         tokio::run(fut.map(|msg| println!("{}", msg)));
     }
