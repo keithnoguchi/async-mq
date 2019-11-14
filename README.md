@@ -30,6 +30,36 @@
 [streams]: https://tokio.rs/docs/futures/streams/
 [spawning]: https://tokio.rs/docs/futures/spawning/
 
+## Test
+
+Currently, there are ten unit test in some of the modules, though it's not
+actually testing anything but just printing out the result.  I'll come back
+later to make it actaully test the behavior.
+
+```sh
+$ make test | tail -16
+    Finished dev [unoptimized + debuginfo] target(s) in 0.02s
+     Running target/debug/deps/rustmq-a5a15abce52d5c74
+[combinator::HelloWorld] poll()
+     Running target/debug/deps/rustmq-e666ab5ce730d6e4
+   Doc-tests rustmq
+value #48 = 7778742049
+value #49 = 12586269025
+test fibonacci::test::display_slow_fibonacci ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+```
+
 ## Execution
 
 Currently, [main.rs] is the demonstration of [tokio getting-started] guide
@@ -37,24 +67,35 @@ to get familier with [tokio runtime].  Here is the snippet of `make run`,
 which is a wrapper of `cargo run` as in [Makefile]:
 
 ```sh
-air1$ make run
+$ make run
    Compiling rustmq v0.1.0 (/home/kei/git/rustmq)
-    Finished dev [unoptimized + debuginfo] target(s) in 0.82s
+    Finished dev [unoptimized + debuginfo] target(s) in 0.83s
      Running `target/debug/rustmq`
-[server]: server running on 127.0.0.1:6142
-[client]: About to create the stream and write to it...
-[server]: connection from TcpStream { addr: V4(127.0.0.1:6142), pee
-r: V4(127.0.0.1:50692), fd: 54 }
-[peer::GetPeerAddr]: peer address = 127.0.0.1:6142
-[server]: connection from TcpStream { addr: V4(127.0.0.1:6142), pee
-r: V4(127.0.0.1:50694), fd: 5 }
-created stream
-[client]: wrote to stream; success=true
-[server]: error: Connection reset by peer (os error 104)
-[client]: Stream has been created and written to.
-[server]: wrote 0 bytes
+[peer::HelloWorld]: poll()
+[peer::HelloWorld]: poll()
 [basic::Display]: hello world
+[peer::HelloWorld]: Connecting
+[peer::HelloWorld]: Connected
 [basic::BetterDisplay]: hello world
+[echo::server]: connection from TcpStream { addr: V4(127.0.0.1:6142), peer: V4(127.0.0.1:48716), fd: 21 }
+[echo::server]: connection from TcpStream { addr: V4(127.0.0.1:6142), peer: V4(127.0.0.1:48718), fd: 16 }
+[peer::GetPeerAddr[echo::server]: connection from TcpStream { addr: V4(127.0.0.1:6142), peer: V4(127.0.0.1:48720), fd: 22
+}
+]: NotReady
+[combinator::HelloWorld] poll()
+[echo::server]: connection from TcpStream { addr: V4(127.0.0.1:6142), peer: V4(127.0.0.1:48722), fd: 23 }
+[combinator::hello]: [combinator::HelloWorld]: hello world
+[echo::server]: connection from TcpStream { addr: V4(127.0.0.1:6142), peer: V4(127.0.0.1:48724), fd: 24 }
+[echo::client_and_then]: write complete
+[peer::GetPeerAddr]: peer address = 127.0.0.1:6142
+[echo::server]: wrote 11 bytes
+[echo::client]: created stream
+[echo::client]: wrote to stream; success=true
+[echo::server]: wrote 0 bytes
+[echo::server]: wrote 11 bytes
+[echo::server]: wrote 12 bytes
+[echo::client_and_then_and_then]: got [104, 101, 108, 108, 111, 32, 119, 111, 114, 108]
+[echo::server]: error: Connection reset by peer (os error 104)
 ^C
 ```
 
