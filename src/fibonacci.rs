@@ -110,6 +110,32 @@ pub fn fibonacci() -> impl futures::Stream<Item = u64, Error = ()> {
 #[cfg(test)]
 mod test {
     #[test]
+    fn into_iterator() {
+        struct Test {
+            name: &'static str,
+            data: Vec<i32>,
+        }
+        let tests = [
+            Test {
+                name: "1, 2, 3",
+                data: vec![1, 2, 3],
+            },
+            Test {
+                name: "1, 2, 3, 4, 5",
+                data: vec![1, 2, 3, 4, 5],
+            },
+        ];
+        for t in &tests {
+            use futures::Stream;
+            let name = t.name;
+            let data = t.data.clone();
+            tokio::run(futures::stream::iter_ok(data).for_each(move |i| {
+                println!("[{}]: {}", name, i);
+                Ok(())
+            }));
+        }
+    }
+    #[test]
     fn fibonacci() {
         struct Test {
             name: &'static str,
