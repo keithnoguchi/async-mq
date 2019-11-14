@@ -31,18 +31,23 @@ impl futures::Stream for Fibonacci {
     }
 }
 
-pub struct Display10<T> {
+pub struct Display<T> {
     stream: T,
     curr: usize,
+    max: usize,
 }
 
-impl<T> Display10<T> {
-    pub fn new(stream: T) -> Self {
-        Self { stream, curr: 0 }
+impl<T> Display<T> {
+    pub fn new(stream: T, max: usize) -> Self {
+        Self {
+            stream,
+            curr: 0,
+            max,
+        }
     }
 }
 
-impl<T> futures::Future for Display10<T>
+impl<T> futures::Future for Display<T>
 where
     T: futures::Stream,
     T::Item: std::fmt::Display,
@@ -50,7 +55,7 @@ where
     type Item = ();
     type Error = T::Error;
     fn poll(&mut self) -> futures::Poll<Self::Item, Self::Error> {
-        while self.curr < 10 {
+        while self.curr < self.max {
             let value = match futures::try_ready!(self.stream.poll()) {
                 Some(value) => value,
                 None => break,
@@ -66,8 +71,28 @@ where
 mod test {
     #[test]
     fn display10() {
-        let fib = super::Fibonacci::new();
-        let stream = super::Display10::new(fib);
-        tokio::run(stream);
+        struct Test {
+            _name: &'static str,
+            max: usize,
+        }
+        let tests = [
+            Test {
+                _name: "print out 1 fibonacci number",
+                max: 1,
+            },
+            Test {
+                _name: "print out 5 fibonacci numbers",
+                max: 5,
+            },
+            Test {
+                _name: "print out 10 fibonacci numbers",
+                max: 10,
+            },
+        ];
+        for t in &tests {
+            let fib = super::Fibonacci::new();
+            let stream = super::Display::new(fib, t.max);
+            tokio::run(stream);
+        }
     }
 }
