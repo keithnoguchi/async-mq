@@ -10,14 +10,14 @@
 
 ## Modules
 
-- [client]: [Hello World] client example
+- [echo]: [Hello World] example
 - [basic]: [Basic futures] example
 - [peer]: [Getting asynchronous] example
 - [combinator]: [Combinators] example
 - [fibonacci]: [Streams] example
 - [spawn]: [Spawning] example
 
-[client]: src/client.rs
+[echo]: src/echo.rs
 [basic]: src/basic.rs
 [peer]: src/peer.rs
 [combinator]: src/combinator.rs

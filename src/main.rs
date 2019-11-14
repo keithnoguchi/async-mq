@@ -16,9 +16,9 @@ fn main() {
             tokio::spawn(rustmq::peer::hello(&addr1));
             tokio::spawn(rustmq::peer::peer(&addr1));
             tokio::spawn(rustmq::combinator::hello());
-            tokio::spawn(rustmq::client::hello(&addr1));
-            tokio::spawn(rustmq::client::and_then(&addr1));
-            tokio::spawn(rustmq::client::and_then_and_then(&addr1));
+            tokio::spawn(rustmq::echo::client(&addr1));
+            tokio::spawn(rustmq::echo::client_and_then(&addr1));
+            tokio::spawn(rustmq::echo::client_and_then_and_then(&addr1));
             Ok(())
         }))
     });
