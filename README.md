@@ -14,15 +14,18 @@
 - [peer]: [Getting asynchronous] example
 - [combinator]: [Combinators] example
 - [fibonacci]: [Streams] example
+- [spawn]: [Spawning] example
 
 [basic]: src/basic.rs
 [peer]: src/peer.rs
 [combinator]: src/combinator.rs
 [fibonacci]: src/fibonacci.rs
+[spawn]: src/spawn.rs
 [basic futures]: https://tokio.rs/docs/futures/basic/
 [getting asynchronous]: https://tokio.rs/docs/futures/getting_asynchronous/
 [combinators]: https://tokio.rs/docs/futures/combinators/
 [streams]: https://tokio.rs/docs/futures/streams/
+[spawning]: https://tokio.rs/docs/futures/spawning/
 
 ## Execution
 
