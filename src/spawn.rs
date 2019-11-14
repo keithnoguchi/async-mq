@@ -1,7 +1,21 @@
 // SPDX-License-Identifier: GPL-2.0
+use futures::Future;
+use std::net::SocketAddr;
+use tokio;
+
+// https://tokio.rs/docs/futures/spawning/
+pub fn server(addr: &SocketAddr) -> impl Future<Item = (), Error = ()> {
+    use futures::Stream;
+    const NAME: &str = "spawn::server";
+    tokio::net::tcp::TcpListener::bind(addr)
+        .unwrap()
+        .incoming()
+        .for_each(|_| Ok(()))
+        .map_err(|err| eprintln!("[{}]: {}", NAME, err))
+}
+
 #[cfg(test)]
 mod tests {
-    use futures;
     #[test]
     fn lazy() {
         struct Test {
