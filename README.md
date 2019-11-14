@@ -55,20 +55,26 @@ created stream
 ## References
 
 - [RabbitMQ]: The most widely deployed open source message broker
-- [Crate tokio]: The asynchronous run-time for the Rust Programming Language
 - [Crate lapin-futures]: [Crate futures v0.1] based [Crate lapin]
 - [Crate lapin]: RabbitMQ crate based on AMQP 0.9.1 specification
-- [Crate futures v0.3]: Abstructions for Asynchronous Programming
-- [Crate futures v0.1]: Zero-cost Futures in Rust
+- [Crate tokio]: The asynchronous run-time for the Rust Programming Language
+  - [Crate tokio v0.2]: A runtime for writing reliable, asynchronous, and slim applications
+  - [Crate tokio v0.1]: An event-driven, non-blocking I/O platform for writing asynchronous I/O backed applications
+- [Crate futures]:
+  - [Crate futures v0.3]: Abstructions for Asynchronous Programming
+  - [Crate futures v0.1]: Zero-cost Futures in Rust
 - [Original futures design]: Original futures design by [Aaron Turon]
 
 [RabbitMQ]: https://www.rabbitmq.com
-[crate tokio]: https://tokio.rs/
-[tokio getting-started]: https://tokio.rs/docs/getting-started/hello-world/
-[tokio runtime]: https://tokio.rs/docs/getting-started/runtime/
-[crate futures v0.3]: https://docs.rs/futures/0.3.1/
-[crate futures v0.1]: https://docs.rs/futures/0.1.29/
 [crate lapin-futures]: https://docs.rs/lapin-futures/0.28.2/lapin_futures/
 [crate lapin]: https://docs.rs/lapin/0.28.2/lapin/
+[crate tokio]: https://tokio.rs/
+[crate tokio v0.2]: https://docs.rs/tokio/0.2.0-alpha.6/tokio/
+[crate tokio v0.1]: https://docs.rs/crate/tokio/0.1.22
+[tokio getting-started]: https://tokio.rs/docs/getting-started/hello-world/
+[tokio runtime]: https://tokio.rs/docs/getting-started/runtime/
+[crate futures]: http://futures.rs/
+[crate futures v0.3]: https://docs.rs/futures/0.3.1/
+[crate futures v0.1]: https://docs.rs/futures/0.1.29/
 [original futures design]: https://aturon.github.io/blog/2016/09/07/futures-design/
 [Aaron Turon]: https://aturon.github.io/blog/
