@@ -76,4 +76,25 @@ mod tests {
             }))
         }
     }
+    #[test]
+    fn mpsc() {
+        use futures::future::lazy;
+        tokio::run(lazy(|| {
+            use futures::sync::mpsc;
+            use futures::{future::Future, sink::Sink, stream, Stream};
+            let (tx, rx) = mpsc::channel(1_024);
+            tokio::spawn({
+                stream::iter_ok(0..10)
+                    .fold(tx, |tx, i| {
+                        tx.send(format!("message {} from spawned task", i))
+                            .map_err(|err| eprintln!("error = {}", err))
+                    })
+                    .map(|_| ())
+            });
+            rx.for_each(|msg| {
+                println!("Got {}", msg);
+                Ok(())
+            })
+        }));
+    }
 }
