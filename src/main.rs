@@ -17,6 +17,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         tokio::spawn(rustmq::peer::peer(&addr));
         tokio::spawn(rustmq::combinator::hello());
         tokio::spawn(rustmq::spawn::server(&addr2));
+        tokio::spawn(rustmq::peer::peer(&addr2));
         Ok(())
     }));
     Ok(())

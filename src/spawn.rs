@@ -10,7 +10,10 @@ pub fn server(addr: &SocketAddr) -> impl Future<Item = (), Error = ()> {
     tokio::net::tcp::TcpListener::bind(addr)
         .unwrap()
         .incoming()
-        .for_each(|_| Ok(()))
+        .for_each(|sock| {
+            println!("[{}]: {:?}", NAME, sock);
+            Ok(())
+        })
         .map_err(|err| eprintln!("[{}]: {}", NAME, err))
 }
 
