@@ -34,18 +34,46 @@ mod tests {
     }
     #[test]
     fn oneshot() {
-        use futures::future::{lazy, Future};
-        tokio::run(lazy(|| {
-            let (tx, rx) = futures::sync::oneshot::channel();
-            tokio::spawn(lazy(|| {
-                tx.send("sending it").unwrap();
+        struct Test {
+            name: &'static str,
+            count: usize,
+        }
+        let tests = [
+            Test {
+                name: "single oneshot",
+                count: 1,
+            },
+            Test {
+                name: "100 oneshots",
+                count: 100,
+            },
+            Test {
+                name: "1,000 oneshots",
+                count: 1_000,
+            },
+        ];
+        for t in &tests {
+            use futures::future::lazy;
+            let name = t.name;
+            let count = t.count;
+            tokio::run(lazy(move || {
+                use futures::{future::Future, sync::oneshot};
+                for _ in 0..count {
+                    let (tx, rx) = oneshot::channel();
+                    tokio::spawn(lazy(move || {
+                        tx.send(format!("{}", name)).unwrap();
+                        Ok(())
+                    }));
+                    tokio::spawn(lazy(move || {
+                        rx.and_then(|msg| {
+                            println!("[{}] got it!", msg);
+                            Ok(())
+                        })
+                        .map_err(move |err| eprintln!("[{}] error: {}", name, err))
+                    }));
+                }
                 Ok(())
-            }));
-            rx.and_then(|msg| {
-                println!("Got {}!", msg);
-                Ok(())
-            })
-            .map_err(|err| eprintln!("receive error: {}", err))
-        }));
+            }))
+        }
     }
 }
