@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0
 use bytes;
-use futures;
+use futures::{self, Future};
 use tokio;
 
 // https://tokio.rs/docs/futures/getting_asynchronous/
-#[allow(dead_code)]
 pub enum HelloWorld {
     Connecting(tokio::net::tcp::ConnectFuture),
     Connected(tokio::net::tcp::TcpStream, std::io::Cursor<bytes::Bytes>),
@@ -62,4 +61,14 @@ impl futures::Future for GetPeerAddr {
             }
         }
     }
+}
+
+pub fn hello(addr: &std::net::SocketAddr) -> impl Future<Item = (), Error = ()> {
+    let conn = tokio::net::tcp::TcpStream::connect(&addr);
+    HelloWorld::Connecting(conn).map_err(|err| eprintln!("{0}", err))
+}
+
+pub fn peer(addr: &std::net::SocketAddr) -> impl Future<Item = (), Error = ()> {
+    let conn = tokio::net::tcp::TcpStream::connect(&addr);
+    GetPeerAddr { conn }
 }
