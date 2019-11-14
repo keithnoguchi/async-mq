@@ -25,6 +25,19 @@ pub fn server(addr: &SocketAddr) -> impl Future<Item = (), Error = ()> {
         .map_err(|err| eprintln!("[{}]: {}", NAME, err))
 }
 
+pub fn background(addr: &SocketAddr) -> impl Future<Item = (), Error = ()> {
+    use futures::Stream;
+    const NAME: &str = "spawn::background";
+    tokio::net::tcp::TcpListener::bind(addr)
+        .unwrap()
+        .incoming()
+        .for_each(|peer| {
+            println!("[{}]: got {} request", NAME, peer.peer_addr().unwrap());
+            Ok(())
+        })
+        .map_err(|err| eprintln!("[{}]: {:?}", NAME, err))
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
