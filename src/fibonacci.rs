@@ -100,8 +100,40 @@ where
     }
 }
 
+pub fn fibonacci() -> impl futures::Stream<Item = u64, Error = ()> {
+    futures::stream::unfold((1, 1), |(curr, next)| {
+        let new_next = curr + next;
+        Some(Ok((curr, (next, new_next))))
+    })
+}
+
 #[cfg(test)]
 mod test {
+    #[test]
+    fn fibonacci() {
+        struct Test {
+            name: &'static str,
+            count: u64,
+        }
+        let tests = [
+            Test {
+                name: "10 entries",
+                count: 10,
+            },
+            Test {
+                name: "50 entries",
+                count: 50,
+            },
+        ];
+        for t in &tests {
+            use futures::Stream;
+            let name = t.name;
+            tokio::run(super::fibonacci().take(t.count).for_each(move |i| {
+                println!("[{}]: {}", name, i);
+                Ok(())
+            }));
+        }
+    }
     #[test]
     fn display_slow_fibonacci() {
         struct Test {
