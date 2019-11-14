@@ -31,7 +31,7 @@ pub fn background(addr: &SocketAddr) -> impl Future<Item = (), Error = ()> {
     futures::future::lazy(move || {
         use futures::Stream;
         let (_tx, rx) = mpsc::channel(1_024);
-        tokio::spawn(work(rx));
+        tokio::spawn(sum(rx));
         tokio::net::tcp::TcpListener::bind(&addr)
             .unwrap()
             .incoming()
@@ -43,7 +43,7 @@ pub fn background(addr: &SocketAddr) -> impl Future<Item = (), Error = ()> {
     })
 }
 
-fn work(rx: mpsc::Receiver<usize>) -> impl Future<Item = (), Error = ()> {
+fn sum(rx: mpsc::Receiver<usize>) -> impl Future<Item = (), Error = ()> {
     use futures::Stream;
     const NAME: &str = "spawn::work";
     #[derive(Eq, PartialEq)]
@@ -80,39 +80,211 @@ fn work(rx: mpsc::Receiver<usize>) -> impl Future<Item = (), Error = ()> {
 #[cfg(test)]
 mod tests {
     #[test]
-    fn work() {
+    fn sum() {
+        #[derive(Clone)]
         struct Test {
-            _name: &'static str,
+            name: &'static str,
             bufsiz: usize,
+            producers: usize,
+            data: usize,
         }
         let tests = [
             Test {
-                _name: "one byte buffer",
+                name: "one producer with one byte channel buffer",
                 bufsiz: 1,
+                producers: 1,
+                data: 256,
             },
             Test {
-                _name: "two bytes buffer",
+                name: "one producer with two bytes channel buffer",
                 bufsiz: 2,
+                producers: 1,
+                data: 256,
             },
             Test {
-                _name: "512 bytes buffer",
+                name: "one producer with 512 bytes channel buffer",
                 bufsiz: 512,
+                producers: 1,
+                data: 256,
             },
             Test {
-                _name: "1,024 bytes buffer",
+                name: "one producer with 1,024 bytes channel buffer",
                 bufsiz: 1_024,
+                producers: 1,
+                data: 256,
             },
             Test {
-                _name: "4K bytes buffer",
+                name: "one producer with 4K bytes channel buffer",
                 bufsiz: 4_094,
+                producers: 1,
+                data: 256,
+            },
+            Test {
+                name: "two producers with one byte channel buffer",
+                bufsiz: 1,
+                producers: 2,
+                data: 256,
+            },
+            Test {
+                name: "two producers with two bytes channel buffer",
+                bufsiz: 2,
+                producers: 2,
+                data: 256,
+            },
+            Test {
+                name: "two producers with 512 bytes channel buffer",
+                bufsiz: 512,
+                producers: 2,
+                data: 256,
+            },
+            Test {
+                name: "two producers with 1,024 bytes channel buffer",
+                bufsiz: 1_024,
+                producers: 2,
+                data: 256,
+            },
+            Test {
+                name: "two producers with 4K bytes channel buffer",
+                bufsiz: 4_094,
+                producers: 2,
+                data: 256,
+            },
+            Test {
+                name: "four producers with one byte channel buffer",
+                bufsiz: 1,
+                producers: 4,
+                data: 256,
+            },
+            Test {
+                name: "four producers with two bytes channel buffer",
+                bufsiz: 2,
+                producers: 4,
+                data: 256,
+            },
+            Test {
+                name: "four producers with 512 bytes channel buffer",
+                bufsiz: 512,
+                producers: 4,
+                data: 256,
+            },
+            Test {
+                name: "four producers with 1,024 bytes channel buffer",
+                bufsiz: 1_024,
+                producers: 4,
+                data: 256,
+            },
+            Test {
+                name: "four producers with 4K bytes channel buffer",
+                bufsiz: 4_094,
+                producers: 4,
+                data: 256,
+            },
+            Test {
+                name: "16 producers with one byte channel buffer",
+                bufsiz: 1,
+                producers: 16,
+                data: 256,
+            },
+            Test {
+                name: "16 producers with two bytes channel buffer",
+                bufsiz: 2,
+                producers: 16,
+                data: 256,
+            },
+            Test {
+                name: "16 producers with 512 bytes channel buffer",
+                bufsiz: 512,
+                producers: 16,
+                data: 256,
+            },
+            Test {
+                name: "16 producers with 1,024 bytes channel buffer",
+                bufsiz: 1_024,
+                producers: 16,
+                data: 256,
+            },
+            Test {
+                name: "16 producers with 4K bytes channel buffer",
+                bufsiz: 4_094,
+                producers: 16,
+                data: 256,
+            },
+            Test {
+                name: "64 producers with one byte channel buffer",
+                bufsiz: 1,
+                producers: 64,
+                data: 256,
+            },
+            Test {
+                name: "64 producers with two bytes channel buffer",
+                bufsiz: 2,
+                producers: 64,
+                data: 256,
+            },
+            Test {
+                name: "64 producers with 512 bytes channel buffer",
+                bufsiz: 512,
+                producers: 64,
+                data: 256,
+            },
+            Test {
+                name: "64 producers with 1,024 bytes channel buffer",
+                bufsiz: 1_024,
+                producers: 64,
+                data: 256,
+            },
+            Test {
+                name: "64 producers with 4K bytes channel buffer",
+                bufsiz: 4_094,
+                producers: 64,
+                data: 256,
+            },
+            Test {
+                name: "256 producers with one byte channel buffer",
+                bufsiz: 1,
+                producers: 256,
+                data: 256,
+            },
+            Test {
+                name: "256 producers with two bytes channel buffer",
+                bufsiz: 2,
+                producers: 256,
+                data: 256,
+            },
+            Test {
+                name: "256 producers with 512 bytes channel buffer",
+                bufsiz: 512,
+                producers: 256,
+                data: 256,
+            },
+            Test {
+                name: "256 producers with 1,024 bytes channel buffer",
+                bufsiz: 1_024,
+                producers: 256,
+                data: 256,
+            },
+            Test {
+                name: "256 producers with 4K bytes channel buffer",
+                bufsiz: 4_094,
+                producers: 256,
+                data: 256,
             },
         ];
         for t in &tests {
-            use futures::{Future, Sink};
-            let (tx, rx) = futures::sync::mpsc::channel(t.bufsiz);
-            tokio::run(futures::future::lazy(|| {
-                tokio::spawn({ tx.send(1).map(|_| ()).map_err(|err| eprintln!("{}", err)) });
-                tokio::spawn(super::work(rx));
+            let t = t.clone();
+            tokio::run(futures::future::lazy(move || {
+                use futures::{Future, Sink};
+                let (tx, rx) = futures::sync::mpsc::channel(t.bufsiz);
+                for _ in 0..t.producers {
+                    let tx = tx.clone();
+                    tokio::spawn({
+                        tx.send(t.data)
+                            .map(|_| ())
+                            .map_err(|err| eprintln!("{}", err))
+                    });
+                }
+                tokio::spawn(super::sum(rx));
+                println!("{}: done", t.name);
                 Ok(())
             }));
         }
