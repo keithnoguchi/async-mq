@@ -8,26 +8,22 @@ fn main() {
     let server = thread::spawn(move || {
         server(&addr1);
     });
-    let addr1 = addr2;
-    let client = thread::spawn(move || {
-        client(&addr2);
-    });
     let basic = thread::spawn(|| {
         basic();
     });
-    let addr2 = addr1;
-    let peer = thread::spawn(move || {
-        peer(&addr1);
-    });
     let addr1 = addr2;
+    let peer = thread::spawn(move || {
+        peer(&addr2);
+    });
     let hello = thread::spawn(move || {
-        hello(&addr2);
+        hello(&addr1);
     });
     let mapper = thread::spawn(|| {
         mapper();
     });
     let runtime = thread::spawn(move || {
         tokio::run(futures::future::lazy(move || {
+            tokio::spawn(rustmq::client::hello(&addr1));
             tokio::spawn(rustmq::client::and_then(&addr1));
             tokio::spawn(rustmq::client::and_then_and_then(&addr1));
             Ok(())
@@ -38,7 +34,6 @@ fn main() {
     hello.join().unwrap();
     peer.join().unwrap();
     basic.join().unwrap();
-    client.join().unwrap();
     server.join().unwrap();
 }
 
@@ -97,23 +92,4 @@ fn server(addr: &std::net::SocketAddr) {
         });
     println!("[{}]: server running on {}", NAME, addr);
     tokio::run(fut);
-}
-
-// https://tokio.rs/docs/getting-started/hello-world/
-fn client(addr: &std::net::SocketAddr) {
-    const NAME: &str = "client";
-    let fut = tokio::net::TcpStream::connect(addr)
-        .and_then(|stream| {
-            println!("[{}]: created stream", NAME);
-            tokio::io::write_all(stream, "hello world\n").then(|ret| {
-                println!("[{}]: wrote to stream; success={:?}", NAME, ret.is_ok());
-                Ok(())
-            })
-        })
-        .map_err(|e| {
-            println!("connection error: {:?}", e);
-        });
-    println!("[{}]: About to create the stream and write to it...", NAME);
-    tokio::run(fut);
-    println!("[{}]: Stream has been created and written to.", NAME);
 }
