@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0
-use futures;
+use futures::{self, Future};
 
 // https://tokio.rs/docs/futures/basic/
 pub struct HelloWorld {
@@ -69,6 +69,14 @@ where
         println!("[{}]: {}", NAME, value);
         Ok(futures::Async::Ready(()))
     }
+}
+
+pub fn display(count: u32) -> impl Future<Item = (), Error = ()> {
+    Display(HelloWorld::new(count))
+}
+
+pub fn better_display(count: u32) -> impl Future<Item = (), Error = ()> {
+    BetterDisplay(HelloWorld::new(count))
 }
 
 #[cfg(test)]

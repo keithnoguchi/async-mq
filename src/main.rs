@@ -8,9 +8,6 @@ fn main() {
     let server = thread::spawn(move || {
         server(&addr1);
     });
-    let basic = thread::spawn(|| {
-        basic();
-    });
     let addr1 = addr2;
     let peer = thread::spawn(move || {
         peer(&addr2);
@@ -21,8 +18,11 @@ fn main() {
     let mapper = thread::spawn(|| {
         mapper();
     });
+    let count = 1;
     let runtime = thread::spawn(move || {
         tokio::run(futures::future::lazy(move || {
+            tokio::spawn(rustmq::basic::display(count));
+            tokio::spawn(rustmq::basic::better_display(count));
             tokio::spawn(rustmq::client::hello(&addr1));
             tokio::spawn(rustmq::client::and_then(&addr1));
             tokio::spawn(rustmq::client::and_then_and_then(&addr1));
@@ -33,7 +33,6 @@ fn main() {
     mapper.join().unwrap();
     hello.join().unwrap();
     peer.join().unwrap();
-    basic.join().unwrap();
     server.join().unwrap();
 }
 
@@ -55,15 +54,6 @@ fn hello(addr: &std::net::SocketAddr) {
 fn peer(addr: &std::net::SocketAddr) {
     let conn = tokio::net::tcp::TcpStream::connect(&addr);
     let fut = rustmq::peer::GetPeerAddr { conn };
-    tokio::run(fut);
-}
-
-// https://tokio.rs/docs/futures/basic/
-fn basic() {
-    let count = 1;
-    let fut = rustmq::basic::Display(rustmq::basic::HelloWorld::new(count));
-    tokio::run(fut);
-    let fut = rustmq::basic::BetterDisplay(rustmq::basic::HelloWorld::new(count));
     tokio::run(fut);
 }
 
