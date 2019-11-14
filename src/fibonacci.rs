@@ -31,6 +31,39 @@ impl futures::Stream for Fibonacci {
     }
 }
 
+pub struct SlowFibonacci {
+    interval: tokio::timer::Interval,
+    curr: u64,
+    next: u64,
+}
+
+impl SlowFibonacci {
+    pub fn new(duration: std::time::Duration) -> Self {
+        Self {
+            interval: tokio::timer::Interval::new_interval(duration),
+            curr: 1,
+            next: 1,
+        }
+    }
+}
+
+impl futures::Stream for SlowFibonacci {
+    type Item = u64;
+    type Error = ();
+    fn poll(&mut self) -> futures::Poll<Option<u64>, ()> {
+        futures::try_ready!(self
+            .interval
+            .poll()
+            // ignore error
+            .map_err(|_| ()));
+        let curr = self.curr;
+        let next = curr + self.next;
+        self.curr = self.next;
+        self.next = next;
+        Ok(futures::Async::Ready(Some(curr)))
+    }
+}
+
 pub struct Display<T> {
     stream: T,
     curr: usize,
@@ -70,28 +103,56 @@ where
 #[cfg(test)]
 mod test {
     #[test]
-    fn display10() {
+    fn display_slow_fibonacci() {
         struct Test {
-            _name: &'static str,
-            max: usize,
+            name: &'static str,
+            delay: u64,
+            count: usize,
         }
         let tests = [
             Test {
-                _name: "print out 1 fibonacci number",
-                max: 1,
+                name: "10 fibonaccis with 50msec delay",
+                delay: 50,
+                count: 10,
             },
             Test {
-                _name: "print out 5 fibonacci numbers",
-                max: 5,
+                name: "50 fibonaccis with 1msc delay",
+                delay: 1,
+                count: 50,
+            },
+        ];
+        for t in &tests {
+            let msec = std::time::Duration::from_millis(t.delay);
+            let fib = super::SlowFibonacci::new(msec);
+            let stream = super::Display::new(fib, t.count);
+            println!("{}", t.name);
+            tokio::run(stream);
+        }
+    }
+    #[test]
+    fn display_fibonacci() {
+        struct Test {
+            name: &'static str,
+            count: usize,
+        }
+        let tests = [
+            Test {
+                name: "print out 1 fibonacci number",
+                count: 1,
             },
             Test {
-                _name: "print out 10 fibonacci numbers",
-                max: 10,
+                name: "print out 5 fibonacci numbers",
+                count: 5,
+            },
+            Test {
+                name: "print out 10 fibonacci numbers",
+                count: 10,
             },
         ];
         for t in &tests {
             let fib = super::Fibonacci::new();
-            let stream = super::Display::new(fib, t.max);
+            let stream = super::Display::new(fib, t.count);
+            println!("{}", t.name);
             tokio::run(stream);
         }
     }
