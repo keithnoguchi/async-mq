@@ -15,14 +15,12 @@ fn main() {
     let hello = thread::spawn(move || {
         hello(&addr1);
     });
-    let mapper = thread::spawn(|| {
-        mapper();
-    });
     let count = 1;
     let runtime = thread::spawn(move || {
         tokio::run(futures::future::lazy(move || {
             tokio::spawn(rustmq::basic::display(count));
             tokio::spawn(rustmq::basic::better_display(count));
+            tokio::spawn(rustmq::combinator::hello());
             tokio::spawn(rustmq::client::hello(&addr1));
             tokio::spawn(rustmq::client::and_then(&addr1));
             tokio::spawn(rustmq::client::and_then_and_then(&addr1));
@@ -30,17 +28,9 @@ fn main() {
         }))
     });
     runtime.join().unwrap();
-    mapper.join().unwrap();
     hello.join().unwrap();
     peer.join().unwrap();
     server.join().unwrap();
-}
-
-// https://tokio.rs/docs/futures/combinators/
-fn mapper() {
-    const NAME: &str = "mapper";
-    let fut = rustmq::combinator::HelloWorld;
-    tokio::run(fut.map(|msg| println!("[{}]: {}", NAME, msg)));
 }
 
 // https://tokio.rs/docs/futures/getting_asynchronous/

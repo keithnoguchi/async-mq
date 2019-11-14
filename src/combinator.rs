@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
-use futures;
+use futures::{self, Future};
 
+// https://tokio.rs/docs/futures/combinators/
 pub struct HelloWorld;
 
 impl futures::Future for HelloWorld {
@@ -11,6 +12,11 @@ impl futures::Future for HelloWorld {
         eprintln!("[{}] poll()", NAME);
         Ok(futures::Async::Ready(format!("[{}]: hello world", NAME)))
     }
+}
+
+pub fn hello() -> impl Future<Item = (), Error = ()> {
+    const NAME: &str = "combinator::hello";
+    HelloWorld.map(|msg| println!("[{}]: {}", NAME, msg))
 }
 
 #[cfg(test)]
