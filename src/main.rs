@@ -26,33 +26,20 @@ fn main() {
     let mapper = thread::spawn(|| {
         mapper();
     });
-    let addr2 = addr1;
-    let and_then_thread = thread::spawn(move || {
-        and_then_thread(&addr1);
-    });
     let runtime = thread::spawn(move || {
         tokio::run(futures::future::lazy(move || {
-            tokio::spawn(rustmq::client::and_then_and_then(&addr2));
+            tokio::spawn(rustmq::client::and_then(&addr1));
+            tokio::spawn(rustmq::client::and_then_and_then(&addr1));
             Ok(())
         }))
     });
     runtime.join().unwrap();
-    and_then_thread.join().unwrap();
     mapper.join().unwrap();
     hello.join().unwrap();
     peer.join().unwrap();
     basic.join().unwrap();
     client.join().unwrap();
     server.join().unwrap();
-}
-
-fn and_then_thread(addr: &std::net::SocketAddr) {
-    const NAME: &str = "and_then_thread";
-    let fut = tokio::net::tcp::TcpStream::connect(&addr)
-        .and_then(|sock| tokio::io::write_all(sock, b"hello world"))
-        .map(|_| println!("[{}]: write complete", NAME))
-        .map_err(|err| eprintln!("[{}]: write error: {}", NAME, err));
-    tokio::run(fut);
 }
 
 // https://tokio.rs/docs/futures/combinators/
