@@ -50,6 +50,11 @@ fn work() -> impl Future<Item = (), Error = ()> {
 #[cfg(test)]
 mod tests {
     #[test]
+    fn work() {
+        use futures::Future;
+        assert_eq!(Ok(()), super::work().wait())
+    }
+    #[test]
     fn lazy() {
         struct Test {
             name: &'static str,
