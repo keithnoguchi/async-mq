@@ -2,9 +2,9 @@
 use futures;
 use tokio;
 
-fn main() {
-    tokio::run(futures::future::lazy(|| {
-        let addr: std::net::SocketAddr = "127.0.0.1:6142".parse().unwrap();
+fn main() -> Result<(), std::net::AddrParseError> {
+    let addr: std::net::SocketAddr = "127.0.0.1:6142".parse()?;
+    tokio::run(futures::future::lazy(move || {
         let count = 1;
         tokio::spawn(rustmq::echo::server(&addr));
         tokio::spawn(rustmq::basic::display(count));
@@ -16,5 +16,6 @@ fn main() {
         tokio::spawn(rustmq::echo::client_and_then(&addr));
         tokio::spawn(rustmq::echo::client_and_then_and_then(&addr));
         Ok(())
-    }))
+    }));
+    Ok(())
 }
