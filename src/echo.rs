@@ -1,7 +1,35 @@
 // SPDX-License-Identifier: GPL-2.0
 use futures::Future;
 use std::net::SocketAddr;
-use tokio::{self, net::tcp::TcpStream};
+use tokio;
+use tokio::net::tcp::{TcpListener, TcpStream};
+
+// https://tokio.rs/docs/getting-started/echo/
+pub fn server(addr: &SocketAddr) -> impl Future<Item = (), Error = ()> {
+    use futures::Stream;
+    use tokio::io::AsyncRead;
+    const NAME: &str = "echo::server";
+    TcpListener::bind(addr)
+        .unwrap()
+        .incoming()
+        .for_each(|sock| {
+            println!("[{}]: connection from {:?}", NAME, sock);
+            let (rx, tx) = sock.split();
+            let amount = tokio::io::copy(rx, tx);
+            let msg = amount.then(|ret| {
+                match ret {
+                    Ok((len, _, _)) => println!("[{}]: wrote {} bytes", NAME, len),
+                    Err(err) => println!("[{}]: error: {}", NAME, err),
+                }
+                Ok(())
+            });
+            tokio::spawn(msg);
+            Ok(())
+        })
+        .map_err(|err| {
+            eprintln!("[{}]: accept error: {:?}", NAME, err);
+        })
+}
 
 // https://tokio.rs/docs/getting-started/hello-world/
 pub fn client(addr: &SocketAddr) -> impl Future<Item = (), Error = ()> {
