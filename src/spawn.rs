@@ -30,7 +30,8 @@ pub fn background(addr: &SocketAddr) -> impl Future<Item = (), Error = ()> {
     futures::future::lazy(move || {
         use futures::Stream;
         const NAME: &str = "spawn::background";
-        tokio::spawn(work());
+        let (_tx, rx) = tokio::sync::mpsc::channel(1_024);
+        tokio::spawn(work(rx));
         tokio::net::tcp::TcpListener::bind(&addr)
             .unwrap()
             .incoming()
@@ -42,7 +43,7 @@ pub fn background(addr: &SocketAddr) -> impl Future<Item = (), Error = ()> {
     })
 }
 
-fn work() -> impl Future<Item = (), Error = ()> {
+fn work(_rx: tokio::sync::mpsc::Receiver<usize>) -> impl Future<Item = (), Error = ()> {
     println!("doing nothing for now...");
     futures::future::ok::<(), ()>(())
 }
@@ -52,7 +53,36 @@ mod tests {
     #[test]
     fn work() {
         use futures::Future;
-        assert_eq!(Ok(()), super::work().wait())
+        struct Test {
+            name: &'static str,
+            bufsiz: usize,
+        }
+        let tests = [
+            Test {
+                name: "one byte buffer",
+                bufsiz: 1,
+            },
+            Test {
+                name: "two bytes buffer",
+                bufsiz: 2,
+            },
+            Test {
+                name: "512 bytes buffer",
+                bufsiz: 512,
+            },
+            Test {
+                name: "1,024 bytes buffer",
+                bufsiz: 1_024,
+            },
+            Test {
+                name: "4K bytes buffer",
+                bufsiz: 4_094,
+            },
+        ];
+        for t in &tests {
+            let (_, rx) = tokio::sync::mpsc::channel(t.bufsiz);
+            debug_assert_eq!(Ok(()), super::work(rx).wait(), "{}", t.name);
+        }
     }
     #[test]
     fn lazy() {
