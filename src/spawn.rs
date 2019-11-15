@@ -29,14 +29,25 @@ pub fn background(addr: &SocketAddr) -> impl Future<Item = (), Error = ()> {
     const NAME: &str = "spawn::background";
     let addr = *addr;
     futures::future::lazy(move || {
-        use futures::Stream;
-        let (_tx, rx) = mpsc::channel(1_024);
+        use futures::{Sink, Stream};
+        let (tx, rx) = mpsc::channel(1_024);
         tokio::spawn(sum(rx));
+        println!("[{}] listen on {:?}", NAME, addr);
         tokio::net::tcp::TcpListener::bind(&addr)
             .unwrap()
             .incoming()
-            .for_each(|peer| {
-                println!("[{}]: got {} request", NAME, peer.peer_addr().unwrap());
+            .for_each(move |sock| {
+                println!("[{}]: from {}", NAME, sock.peer_addr().unwrap());
+                tokio::spawn({
+                    let tx = tx.clone();
+                    tokio::io::read_to_end(sock, vec![])
+                        .and_then(move |(_, buf)| {
+                            tx.send(buf.len())
+                                .map_err(|_| tokio::io::ErrorKind::Other.into())
+                        })
+                        .map(|_| ())
+                        .map_err(|err| eprintln!("[{}]: {:?}", NAME, err))
+                });
                 Ok(())
             })
             .map_err(|err| eprintln!("[{}]: {:?}", NAME, err))
@@ -52,8 +63,8 @@ fn sum(rx: mpsc::Receiver<usize>) -> impl Future<Item = (), Error = ()> {
         Tick,
         Done,
     }
-    // 30sec tick.
-    let tick_dur = std::time::Duration::from_secs(30);
+    // summary interval tick(5sec).
+    let tick_dur = std::time::Duration::from_secs(5);
     let interval = tokio::timer::Interval::new_interval(tick_dur)
         .map(|_| Item::Tick)
         .map_err(|err| eprintln!("[{}]: {}", NAME, err));
@@ -69,7 +80,7 @@ fn sum(rx: mpsc::Receiver<usize>) -> impl Future<Item = (), Error = ()> {
         .fold(0, |num, item| match item {
             Item::Value(v) => futures::future::ok(num + v),
             Item::Tick => {
-                println!("bytes read = {}", num);
+                println!("[{}]: bytes read = {}", NAME, num);
                 futures::future::ok(0)
             }
             _ => unreachable!(),

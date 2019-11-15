@@ -23,6 +23,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             tokio::spawn(rustmq::echo::client(&addr2));
         }
         tokio::spawn(rustmq::spawn::background(&addr3));
+        // background server takes a while to setup,
+        // and echo::client doesn't have a retry capability
+        // yet.
+        std::thread::sleep(std::time::Duration::from_millis(10));
         for _ in 0..client_count {
             tokio::spawn(rustmq::echo::client(&addr3));
         }
