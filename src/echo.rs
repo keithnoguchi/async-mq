@@ -17,9 +17,13 @@ pub fn server(addr: &SocketAddr) -> impl Future<Item = (), Error = ()> {
                         tokio::spawn(
                             handle(sock)
                                 .map_err(|err| eprintln!("[{}]: handle error: {}", NAME, err))
-                                .map(|sock| {
-                                    let peer = sock.peer_addr().unwrap();
-                                    println!("[{}]: taken care of {}", NAME, peer);
+                                .map(|sock| match sock.peer_addr() {
+                                    Ok(peer) => {
+                                        println!("[{}]: taken care of {}", NAME, peer);
+                                    }
+                                    Err(err) => {
+                                        eprintln!("[{}]: peer_addr(): {:?}", NAME, err);
+                                    }
                                 }),
                         );
                     }),
