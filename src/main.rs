@@ -35,9 +35,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         tokio::spawn(rustmq::spawn::coordinate(client_count));
         // https://tokio.rs/docs/io/overview/
         tokio::spawn(rustmq::echo::server(&addrs[3]));
-        for _ in 0..client_count {
-            tokio::spawn(rustmq::hello::client(&addrs[3]));
-        }
         Ok(())
     }));
     Ok(())

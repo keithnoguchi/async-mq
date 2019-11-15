@@ -10,20 +10,30 @@ pub fn server(addr: &SocketAddr) -> impl Future<Item = (), Error = ()> {
     l.incoming()
         .map_err(|err| eprintln!("[{}]: accept failed: {}", NAME, err))
         .for_each(|sock| {
-            let peer = sock.peer_addr().unwrap();
             tokio::spawn(
-                handle(sock)
-                    .map_err(|err| eprintln!("[{}]: handle error: {}", NAME, err))
-                    .map(move |num| {
-                        println!("[{}]: {:?} bytes written total to {}", NAME, num, peer)
+                greeting(sock)
+                    .map_err(|err| eprintln!("[{}]: greeting error: {}", NAME, err))
+                    .map(|sock| {
+                        tokio::spawn(
+                            handle(sock)
+                                .map_err(|err| eprintln!("[{}]: handle error: {}", NAME, err))
+                                .map(|sock| {
+                                    let peer = sock.peer_addr().unwrap();
+                                    println!("[{}]: taken care of {}", NAME, peer);
+                                }),
+                        );
                     }),
             );
             Ok(())
         })
 }
 
-fn handle(sock: TcpStream) -> impl Future<Item = u64, Error = tokio::io::Error> {
+fn greeting(sock: TcpStream) -> impl Future<Item = TcpStream, Error = tokio::io::Error> {
+    tokio::io::write_all(sock, "Howdy!\n").map(|(sock, _)| sock)
+}
+
+fn handle(sock: TcpStream) -> impl Future<Item = TcpStream, Error = tokio::io::Error> {
     use tokio::io::AsyncRead;
     let (reader, writer) = sock.split();
-    tokio::io::copy(reader, writer).map(|(num, _, _)| num)
+    tokio::io::copy(reader, writer).map(|(_, r, w)| r.unsplit(w))
 }
