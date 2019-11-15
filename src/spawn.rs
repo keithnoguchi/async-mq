@@ -118,11 +118,7 @@ fn ping(
     let (resp_tx, resp_rx) = sync::oneshot::channel();
     tx.send((id, resp_tx))
         .map_err(|err| eprintln!("[{}]: send error: {}", NAME, err))
-        .and_then(|_tx| {
-            resp_rx
-                .map(|(id, dur)| (id, dur))
-                .map_err(|err| eprintln!("[{}] recv error: {}", NAME, err))
-        })
+        .and_then(|_tx| resp_rx.map_err(|err| eprintln!("[{}] recv error: {}", NAME, err)))
 }
 
 fn pong(rx: sync::mpsc::Receiver<Message>) -> impl Future<Item = (), Error = ()> {
