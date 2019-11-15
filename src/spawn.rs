@@ -440,4 +440,19 @@ mod tests {
             }));
         }
     }
+    #[test]
+    fn ping_and_pong() {
+        tokio::run(futures::future::lazy(|| {
+            use super::Future;
+            let (tx, rx) = super::sync::mpsc::channel(1_024);
+            tokio::spawn(super::pong(rx));
+            for i in 0..100_024 {
+                tokio::spawn(super::ping(tx.clone()).map(move |(dur, _)| {
+                    println!("{}: duration = {:?}", i, dur);
+                    ()
+                }));
+            }
+            Ok(())
+        }));
+    }
 }
