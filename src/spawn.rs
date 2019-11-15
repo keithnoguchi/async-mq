@@ -276,9 +276,9 @@ mod tests {
                 use futures::{Future, Sink};
                 let (tx, rx) = futures::sync::mpsc::channel(t.bufsiz);
                 for _ in 0..t.producers {
-                    let tx = tx.clone();
                     tokio::spawn({
-                        tx.send(t.data)
+                        tx.clone()
+                            .send(t.data)
                             .map(|_| ())
                             .map_err(|err| eprintln!("{}", err))
                     });
