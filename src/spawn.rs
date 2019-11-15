@@ -266,7 +266,7 @@ mod tests {
             },
             Test {
                 name: "one producer on 4K bytes channel buffer",
-                bufsiz: 4_094,
+                bufsiz: 4_096,
                 producers: 1,
                 data: 256,
             },
@@ -296,7 +296,7 @@ mod tests {
             },
             Test {
                 name: "two producers on 4K bytes channel buffer",
-                bufsiz: 4_094,
+                bufsiz: 4_096,
                 producers: 2,
                 data: 256,
             },
@@ -326,7 +326,7 @@ mod tests {
             },
             Test {
                 name: "four producers on 4K bytes channel buffer",
-                bufsiz: 4_094,
+                bufsiz: 4_096,
                 producers: 4,
                 data: 256,
             },
@@ -356,7 +356,7 @@ mod tests {
             },
             Test {
                 name: "16 producers on 4K bytes channel buffer",
-                bufsiz: 4_094,
+                bufsiz: 4_096,
                 producers: 16,
                 data: 256,
             },
@@ -386,7 +386,7 @@ mod tests {
             },
             Test {
                 name: "64 producers on 4K bytes channel buffer",
-                bufsiz: 4_094,
+                bufsiz: 4_096,
                 producers: 64,
                 data: 256,
             },
@@ -416,7 +416,7 @@ mod tests {
             },
             Test {
                 name: "256 producers on 4K bytes channel buffer",
-                bufsiz: 4_094,
+                bufsiz: 4_096,
                 producers: 256,
                 data: 256,
             },
@@ -442,17 +442,253 @@ mod tests {
     }
     #[test]
     fn ping_and_pong() {
-        tokio::run(futures::future::lazy(|| {
-            use super::Future;
-            let (tx, rx) = super::sync::mpsc::channel(1_024);
-            tokio::spawn(super::pong(rx));
-            for i in 0..100_024 {
-                tokio::spawn(super::ping(tx.clone()).map(move |(dur, _)| {
-                    println!("{}: duration = {:?}", i, dur);
-                    ()
-                }));
-            }
-            Ok(())
-        }));
+        #[derive(Clone)]
+        struct Test {
+            name: &'static str,
+            bufsiz: usize,
+            requesters: usize,
+        }
+        let tests = vec![
+            Test {
+                name: "one requester on one byte channel",
+                bufsiz: 1,
+                requesters: 1,
+            },
+            Test {
+                name: "one requester on two bytes channel",
+                bufsiz: 2,
+                requesters: 1,
+            },
+            Test {
+                name: "one requester on 512 bytes channel buffer",
+                bufsiz: 512,
+                requesters: 1,
+            },
+            Test {
+                name: "one requester on 1,024 bytes channel buffer",
+                bufsiz: 1_024,
+                requesters: 1,
+            },
+            Test {
+                name: "one requester on 4K bytes channel buffer",
+                bufsiz: 4_096,
+                requesters: 1,
+            },
+            Test {
+                name: "two requesters on one byte channel",
+                bufsiz: 1,
+                requesters: 2,
+            },
+            Test {
+                name: "two requesters on two bytes channel",
+                bufsiz: 2,
+                requesters: 2,
+            },
+            Test {
+                name: "two requesters on 512 bytes channel buffer",
+                bufsiz: 512,
+                requesters: 2,
+            },
+            Test {
+                name: "two requesters on 1,024 bytes channel buffer",
+                bufsiz: 1_024,
+                requesters: 2,
+            },
+            Test {
+                name: "two requesters on 4K bytes channel buffer",
+                bufsiz: 4_096,
+                requesters: 2,
+            },
+            Test {
+                name: "16 requesters on one byte channel",
+                bufsiz: 1,
+                requesters: 16,
+            },
+            Test {
+                name: "16 requesters on two bytes channel",
+                bufsiz: 2,
+                requesters: 16,
+            },
+            Test {
+                name: "16 requesters on 512 bytes channel buffer",
+                bufsiz: 512,
+                requesters: 16,
+            },
+            Test {
+                name: "16 requesters on 1,024 bytes channel buffer",
+                bufsiz: 1_024,
+                requesters: 16,
+            },
+            Test {
+                name: "16 requesters on 4K bytes channel buffer",
+                bufsiz: 4_096,
+                requesters: 16,
+            },
+            Test {
+                name: "64 requesters on one byte channel",
+                bufsiz: 1,
+                requesters: 64,
+            },
+            Test {
+                name: "64 requesters on two bytes channel",
+                bufsiz: 2,
+                requesters: 64,
+            },
+            Test {
+                name: "64 requesters on 512 bytes channel buffer",
+                bufsiz: 512,
+                requesters: 64,
+            },
+            Test {
+                name: "64 requesters on 1,024 bytes channel buffer",
+                bufsiz: 1_024,
+                requesters: 64,
+            },
+            Test {
+                name: "64 requesters on 4K bytes channel buffer",
+                bufsiz: 4_096,
+                requesters: 64,
+            },
+            Test {
+                name: "256 requesters on one byte channel",
+                bufsiz: 1,
+                requesters: 256,
+            },
+            Test {
+                name: "256 requesters on two bytes channel",
+                bufsiz: 2,
+                requesters: 256,
+            },
+            Test {
+                name: "256 requesters on 512 bytes channel buffer",
+                bufsiz: 512,
+                requesters: 256,
+            },
+            Test {
+                name: "256 requesters on 1,024 bytes channel buffer",
+                bufsiz: 1_024,
+                requesters: 256,
+            },
+            Test {
+                name: "256 requesters on 4K bytes channel buffer",
+                bufsiz: 4_096,
+                requesters: 256,
+            },
+            Test {
+                name: "512 requesters on one byte channel",
+                bufsiz: 1,
+                requesters: 512,
+            },
+            Test {
+                name: "512 requesters on two bytes channel",
+                bufsiz: 2,
+                requesters: 512,
+            },
+            Test {
+                name: "512 requesters on 512 bytes channel buffer",
+                bufsiz: 512,
+                requesters: 512,
+            },
+            Test {
+                name: "512 requesters on 1,024 bytes channel buffer",
+                bufsiz: 1_024,
+                requesters: 512,
+            },
+            Test {
+                name: "512 requesters on 4K bytes channel buffer",
+                bufsiz: 4_096,
+                requesters: 512,
+            },
+            Test {
+                name: "1,024 requesters on one byte channel",
+                bufsiz: 1,
+                requesters: 1_024,
+            },
+            Test {
+                name: "1,024 requesters on two bytes channel",
+                bufsiz: 2,
+                requesters: 1_024,
+            },
+            Test {
+                name: "1,024 requesters on 512 bytes channel buffer",
+                bufsiz: 512,
+                requesters: 1_024,
+            },
+            Test {
+                name: "1,024 requesters on 1,024 bytes channel buffer",
+                bufsiz: 1_024,
+                requesters: 1_024,
+            },
+            Test {
+                name: "1,024 requesters on 4K bytes channel buffer",
+                bufsiz: 4_096,
+                requesters: 1_024,
+            },
+            Test {
+                name: "4,096 requesters on one byte channel",
+                bufsiz: 1,
+                requesters: 4_096,
+            },
+            Test {
+                name: "4,096 requesters on two bytes channel",
+                bufsiz: 2,
+                requesters: 4_096,
+            },
+            Test {
+                name: "4,096 requesters on 512 bytes channel buffer",
+                bufsiz: 512,
+                requesters: 4_096,
+            },
+            Test {
+                name: "4,096 requesters on 1,024 bytes channel buffer",
+                bufsiz: 1_024,
+                requesters: 4_096,
+            },
+            Test {
+                name: "4,096 requesters on 4K bytes channel buffer",
+                bufsiz: 4_096,
+                requesters: 4_096,
+            },
+            Test {
+                name: "16,384 requesters on one byte channel",
+                bufsiz: 1,
+                requesters: 16_384,
+            },
+            Test {
+                name: "16,384 requesters on two bytes channel",
+                bufsiz: 2,
+                requesters: 16_384,
+            },
+            Test {
+                name: "16,384 requesters on 512 bytes channel buffer",
+                bufsiz: 512,
+                requesters: 16_384,
+            },
+            Test {
+                name: "16,384 requesters on 1,024 bytes channel buffer",
+                bufsiz: 1_024,
+                requesters: 16_384,
+            },
+            Test {
+                name: "16,384 requesters on 4K bytes channel buffer",
+                bufsiz: 4_096,
+                requesters: 16_384,
+            },
+        ];
+        for t in &tests {
+            let t = t.clone();
+            tokio::run(futures::future::lazy(move || {
+                use super::Future;
+                let (tx, rx) = super::sync::mpsc::channel(t.bufsiz);
+                tokio::spawn(super::pong(rx));
+                for i in 0..t.requesters {
+                    tokio::spawn(super::ping(tx.clone()).map(move |(dur, _)| {
+                        println!("{}: duration = {:?}", i, dur);
+                        ()
+                    }));
+                }
+                Ok(())
+            }));
+        }
     }
 }
