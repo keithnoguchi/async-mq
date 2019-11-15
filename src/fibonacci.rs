@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0
-use futures;
+use futures::{self, Future};
 
 // https://tokio.rs/docs/futures/streams/
 pub struct Fibonacci {
@@ -80,7 +80,7 @@ impl<T> Display<T> {
     }
 }
 
-impl<T> futures::Future for Display<T>
+impl<T> Future for Display<T>
 where
     T: futures::Stream,
     T::Item: std::fmt::Display,

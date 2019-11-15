@@ -13,7 +13,7 @@ impl HelloWorld {
     }
 }
 
-impl futures::Future for HelloWorld {
+impl Future for HelloWorld {
     type Item = String;
     type Error = ();
     fn poll(&mut self) -> futures::Poll<Self::Item, Self::Error> {
@@ -30,9 +30,9 @@ impl futures::Future for HelloWorld {
 
 pub struct Display<T>(pub T);
 
-impl<T> futures::Future for Display<T>
+impl<T> Future for Display<T>
 where
-    T: futures::Future,
+    T: Future,
     T::Item: std::fmt::Display,
 {
     type Item = ();
@@ -55,9 +55,9 @@ where
 
 pub struct BetterDisplay<T>(pub T);
 
-impl<T> futures::Future for BetterDisplay<T>
+impl<T> Future for BetterDisplay<T>
 where
-    T: futures::Future,
+    T: Future,
     T::Item: std::fmt::Display,
 {
     type Item = ();

@@ -4,7 +4,7 @@ use futures::{self, Future};
 // https://tokio.rs/docs/futures/combinators/
 pub struct HelloWorld;
 
-impl futures::Future for HelloWorld {
+impl Future for HelloWorld {
     type Item = String;
     type Error = ();
     fn poll(&mut self) -> futures::Poll<Self::Item, Self::Error> {
@@ -23,7 +23,7 @@ pub fn hello() -> impl Future<Item = (), Error = ()> {
 mod tests {
     #[test]
     fn map() {
-        use futures::Future;
+        use super::Future;
         let fut = super::HelloWorld;
         tokio::run(fut.map(|msg| println!("{}", msg)));
     }

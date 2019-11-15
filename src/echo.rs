@@ -1,15 +1,14 @@
 // SPDX-License-Identifier: GPL-2.0
-use futures::Future;
+use futures::{self, Future};
 use std::net::SocketAddr;
-use tokio;
-use tokio::net::tcp::{TcpListener, TcpStream};
+use tokio::{self, net};
 
 // https://tokio.rs/docs/getting-started/echo/
 pub fn server(addr: &SocketAddr) -> impl Future<Item = (), Error = ()> {
     use futures::Stream;
     use tokio::io::AsyncRead;
     const NAME: &str = "echo::server";
-    TcpListener::bind(addr)
+    net::tcp::TcpListener::bind(addr)
         .unwrap()
         .incoming()
         .for_each(|sock| {
@@ -34,7 +33,7 @@ pub fn server(addr: &SocketAddr) -> impl Future<Item = (), Error = ()> {
 // https://tokio.rs/docs/getting-started/hello-world/
 pub fn client(addr: &SocketAddr) -> impl Future<Item = (), Error = ()> {
     const NAME: &str = "echo::client";
-    TcpStream::connect(addr)
+    net::tcp::TcpStream::connect(addr)
         .and_then(|stream| {
             println!("[{}]: created stream", NAME);
             tokio::io::write_all(stream, "hello world\n").then(|ret| {
@@ -50,7 +49,7 @@ pub fn client(addr: &SocketAddr) -> impl Future<Item = (), Error = ()> {
 // https://tokio.rs/docs/futures/combinators/
 pub fn client_and_then(addr: &SocketAddr) -> impl Future<Item = (), Error = ()> {
     const NAME: &str = "echo::client_and_then";
-    TcpStream::connect(addr)
+    net::tcp::TcpStream::connect(addr)
         .and_then(|sock| tokio::io::write_all(sock, b"hello world"))
         .map(|_| println!("[{}]: write complete", NAME))
         .map_err(|err| eprintln!("[{}]: write error: {}", NAME, err))
@@ -59,7 +58,7 @@ pub fn client_and_then(addr: &SocketAddr) -> impl Future<Item = (), Error = ()> 
 // https://tokio.rs/docs/futures/combinators/
 pub fn client_and_then_and_then(addr: &SocketAddr) -> impl Future<Item = (), Error = ()> {
     const NAME: &str = "echo::client_and_then_and_then";
-    TcpStream::connect(addr)
+    net::tcp::TcpStream::connect(addr)
         .and_then(|sock| tokio::io::write_all(sock, b"hello world"))
         .and_then(|(sock, _)| tokio::io::read_exact(sock, vec![0; 10]))
         .and_then(|(_, buf)| {

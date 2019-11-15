@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: GPL-2.0
 use bytes;
 use futures::{self, Future};
-use tokio;
+use std::net::SocketAddr;
+use tokio::{self, net};
 
 // https://tokio.rs/docs/futures/getting_asynchronous/
 pub enum HelloWorld {
-    Connecting(tokio::net::tcp::ConnectFuture),
-    Connected(tokio::net::tcp::TcpStream, std::io::Cursor<bytes::Bytes>),
+    Connecting(net::tcp::ConnectFuture),
+    Connected(net::tcp::TcpStream, std::io::Cursor<bytes::Bytes>),
 }
 
-impl futures::Future for HelloWorld {
+impl Future for HelloWorld {
     type Item = ();
     type Error = std::io::Error;
     fn poll(&mut self) -> futures::Poll<Self::Item, Self::Error> {
@@ -38,10 +39,10 @@ impl futures::Future for HelloWorld {
 }
 
 pub struct GetPeerAddr {
-    pub conn: tokio::net::tcp::ConnectFuture,
+    pub conn: net::tcp::ConnectFuture,
 }
 
-impl futures::Future for GetPeerAddr {
+impl Future for GetPeerAddr {
     type Item = ();
     type Error = ();
     fn poll(&mut self) -> futures::Poll<Self::Item, Self::Error> {
@@ -63,12 +64,12 @@ impl futures::Future for GetPeerAddr {
     }
 }
 
-pub fn hello(addr: &std::net::SocketAddr) -> impl Future<Item = (), Error = ()> {
-    let conn = tokio::net::tcp::TcpStream::connect(&addr);
+pub fn hello(addr: &SocketAddr) -> impl Future<Item = (), Error = ()> {
+    let conn = net::tcp::TcpStream::connect(&addr);
     HelloWorld::Connecting(conn).map_err(|err| eprintln!("{0}", err))
 }
 
-pub fn peer(addr: &std::net::SocketAddr) -> impl Future<Item = (), Error = ()> {
-    let conn = tokio::net::tcp::TcpStream::connect(&addr);
+pub fn peer(addr: &SocketAddr) -> impl Future<Item = (), Error = ()> {
+    let conn = net::tcp::TcpStream::connect(&addr);
     GetPeerAddr { conn }
 }

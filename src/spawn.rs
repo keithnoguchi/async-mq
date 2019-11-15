@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0
 use futures::{self, future, sync, Future};
-use std::net;
+use std::net::SocketAddr;
 use tokio;
 
 // https://tokio.rs/docs/futures/spawning/
-pub fn server(addr: &net::SocketAddr) -> impl Future<Item = (), Error = ()> {
+pub fn server(addr: &SocketAddr) -> impl Future<Item = (), Error = ()> {
     use futures::Stream;
     const NAME: &str = "spawn::server";
     tokio::net::tcp::TcpListener::bind(addr)
@@ -27,7 +27,7 @@ pub fn server(addr: &net::SocketAddr) -> impl Future<Item = (), Error = ()> {
 
 // Background processing example explained in
 // https://tokio.rs/docs/futures/spawning/
-pub fn background(addr: &net::SocketAddr) -> impl Future<Item = (), Error = ()> {
+pub fn background(addr: &SocketAddr) -> impl Future<Item = (), Error = ()> {
     const NAME: &str = "spawn::background";
     let addr = *addr;
     future::lazy(move || {
