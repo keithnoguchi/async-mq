@@ -97,7 +97,7 @@ pub fn coordinate(requesters: usize) -> impl Future<Item = (), Error = ()> {
     future::lazy(move || {
         let (tx, rx) = sync::mpsc::channel(1_024);
         for i in 0..requesters {
-            tokio::spawn(ping(tx.clone()).and_then(move |(dur, _)| {
+            tokio::spawn(ping(i, tx.clone()).and_then(move |(dur, _)| {
                 println!("[{}:{}]: duration = {:?}", NAME, i, dur);
                 Ok(())
             }));
@@ -107,29 +107,30 @@ pub fn coordinate(requesters: usize) -> impl Future<Item = (), Error = ()> {
     })
 }
 
-type Message = sync::oneshot::Sender<std::time::Duration>;
+type Message = (usize, sync::oneshot::Sender<(usize, std::time::Duration)>);
 
 fn ping(
+    id: usize,
     tx: sync::mpsc::Sender<Message>,
-) -> impl Future<Item = (std::time::Duration, sync::mpsc::Sender<Message>), Error = ()> {
+) -> impl Future<Item = (usize, std::time::Duration), Error = ()> {
     use futures::Sink;
     const NAME: &str = "spawn::ping";
     let (resp_tx, resp_rx) = sync::oneshot::channel();
-    tx.send(resp_tx)
+    tx.send((id, resp_tx))
         .map_err(|err| eprintln!("[{}]: send error: {}", NAME, err))
-        .and_then(|tx| {
+        .and_then(|_tx| {
             resp_rx
-                .map(|dur| (dur, tx))
+                .map(|(id, dur)| (id, dur))
                 .map_err(|err| eprintln!("[{}] recv error: {}", NAME, err))
         })
 }
 
 fn pong(rx: sync::mpsc::Receiver<Message>) -> impl Future<Item = (), Error = ()> {
     use futures::Stream;
-    rx.for_each(|tx| {
+    rx.for_each(|(id, tx)| {
         let start = std::time::Instant::now();
         let rtt = start.elapsed();
-        tx.send(rtt).unwrap();
+        tx.send((id, rtt)).unwrap();
         Ok(())
     })
 }
@@ -682,8 +683,9 @@ mod tests {
                 let (tx, rx) = super::sync::mpsc::channel(t.bufsiz);
                 tokio::spawn(super::pong(rx));
                 for i in 0..t.requesters {
-                    tokio::spawn(super::ping(tx.clone()).map(move |(dur, _)| {
-                        println!("{}: duration = {:?}", i, dur);
+                    let name = t.name;
+                    tokio::spawn(super::ping(i, tx.clone()).map(move |(got, _dur)| {
+                        debug_assert_eq!(got, i, "{}", name);
                         ()
                     }));
                 }
