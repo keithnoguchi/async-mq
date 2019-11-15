@@ -21,5 +21,6 @@ fn handle(sock: TcpStream) -> Result<(), tokio::io::Error> {
     const NAME: &str = "echo::handle";
     let (reader, writer) = sock.split();
     println!("[{}]: reader {:?} and writer {:?}", NAME, reader, writer);
+    tokio::spawn(tokio::io::copy(reader, writer).map(|_| ()).map_err(|_| ()));
     Ok(())
 }
