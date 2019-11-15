@@ -4,7 +4,7 @@ use tokio;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut addrs = Vec::<std::net::SocketAddr>::new();
-    for i in 0..4 {
+    for i in 0..5 {
         let addr = format!("127.0.0.1:614{}", i).parse()?;
         addrs.push(addr);
     }
@@ -34,7 +34,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         tokio::spawn(rustmq::spawn::coordinate(client_count));
         // https://tokio.rs/docs/io/overview/
-        tokio::spawn(rustmq::echo::server(&addrs[3]));
+        tokio::spawn(rustmq::echo::server1(&addrs[3]));
+        tokio::spawn(rustmq::echo::server2(&addrs[4]));
         Ok(())
     }));
     Ok(())

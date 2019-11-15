@@ -3,8 +3,23 @@ use futures::{Future, Stream};
 use std::net::SocketAddr;
 use tokio::net::{TcpListener, TcpStream};
 
-pub fn server(addr: &SocketAddr) -> impl Future<Item = (), Error = ()> {
-    const NAME: &str = "echo::server";
+pub enum Handler {
+    Greeting(TcpStream),
+    Handling(TcpStream),
+}
+
+pub fn server2(addr: &SocketAddr) -> impl Future<Item = (), Error = ()> {
+    const NAME: &str = "echo::server2";
+    let l = TcpListener::bind(addr);
+    if let Err(err) = l {
+        eprintln!("[{}]: cannot bind: {}", NAME, err);
+        return futures::future::err(());
+    }
+    futures::future::ok(())
+}
+
+pub fn server1(addr: &SocketAddr) -> impl Future<Item = (), Error = ()> {
+    const NAME: &str = "echo::server1";
     let l = TcpListener::bind(addr)
         .unwrap_or_else(|err| panic!(format!("[{}]: cannot bind: {}", NAME, err)));
     l.incoming()
