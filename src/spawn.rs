@@ -96,9 +96,9 @@ pub fn coordinate(requesters: usize) -> impl Future<Item = (), Error = ()> {
     const NAME: &str = "spawn::coordinate";
     future::lazy(move || {
         let (tx, rx) = sync::mpsc::channel(1_024);
-        for _ in 0..requesters {
-            tokio::spawn(ping(tx.clone()).and_then(|(dur, _)| {
-                println!("[{}]: duration = {:?}", NAME, dur);
+        for i in 0..requesters {
+            tokio::spawn(ping(tx.clone()).and_then(move |(dur, _)| {
+                println!("[{}:{}]: duration = {:?}", NAME, i, dur);
                 Ok(())
             }));
         }
@@ -125,9 +125,13 @@ fn ping(
 }
 
 fn pong(rx: sync::mpsc::Receiver<Message>) -> impl Future<Item = (), Error = ()> {
-    const NAME: &str = "spawn::pong";
-    println!("[{}] {:?}", NAME, rx);
-    future::ok(())
+    use futures::Stream;
+    rx.for_each(|tx| {
+        let start = std::time::Instant::now();
+        let rtt = start.elapsed();
+        tx.send(rtt).unwrap();
+        Ok(())
+    })
 }
 
 #[cfg(test)]
