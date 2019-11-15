@@ -108,7 +108,7 @@ pub fn fibonacci() -> impl futures::Stream<Item = u64, Error = ()> {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     #[test]
     fn into_iterator() {
         struct Test {
