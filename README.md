@@ -10,12 +10,17 @@
 
 ## Modules
 
-- [echo]: [Hello World] example
-- [basic]: [Basic futures] example
-- [peer]: [Getting asynchronous] example
-- [combinator]: [Combinators] example
-- [fibonacci]: [Streams] example
-- [spawn]: [Spawning] example
+- [Hello World!] examples
+  - [echo]: [Hello World] example
+- [Working with Futures] examples
+  - [basic]: [Basic futures] example
+  - [peer]: [Getting asynchronous] example
+  - [combinator]: [Combinators] example
+  - [fibonacci]: [Streams] example
+  - [spawn]: [Spawning] example
+- [I/O with Tokio]
+- [Going Deeper]
+- [Tokio Internals]
 
 [echo]: src/echo.rs
 [basic]: src/basic.rs
