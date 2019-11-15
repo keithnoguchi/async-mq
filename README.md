@@ -11,7 +11,7 @@
 ## Modules
 
 - [Hello World!] examples
-  - [echo]: [Hello World] example
+  - [hello]: [Hello World] example
 - [Working with Futures] examples
   - [basic]: [Basic futures] example
   - [peer]: [Getting asynchronous] example
@@ -22,7 +22,7 @@
 - [Going Deeper]
 - [Tokio Internals]
 
-[echo]: src/echo.rs
+[hello]: src/hello.rs
 [basic]: src/basic.rs
 [peer]: src/peer.rs
 [combinator]: src/combinator.rs

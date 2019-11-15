@@ -7,7 +7,7 @@ use tokio::{self, net};
 pub fn server(addr: &SocketAddr) -> impl Future<Item = (), Error = ()> {
     use futures::Stream;
     use tokio::io::AsyncRead;
-    const NAME: &str = "echo::server";
+    const NAME: &str = "hello::server";
     net::tcp::TcpListener::bind(addr)
         .unwrap()
         .incoming()
@@ -32,7 +32,7 @@ pub fn server(addr: &SocketAddr) -> impl Future<Item = (), Error = ()> {
 
 // https://tokio.rs/docs/getting-started/hello-world/
 pub fn client(addr: &SocketAddr) -> impl Future<Item = (), Error = ()> {
-    const NAME: &str = "echo::client";
+    const NAME: &str = "hello::client";
     net::tcp::TcpStream::connect(addr)
         .and_then(|stream| {
             println!("[{}]: created stream", NAME);
@@ -48,7 +48,7 @@ pub fn client(addr: &SocketAddr) -> impl Future<Item = (), Error = ()> {
 
 // https://tokio.rs/docs/futures/combinators/
 pub fn client_and_then(addr: &SocketAddr) -> impl Future<Item = (), Error = ()> {
-    const NAME: &str = "echo::client_and_then";
+    const NAME: &str = "hello::client_and_then";
     net::tcp::TcpStream::connect(addr)
         .and_then(|sock| tokio::io::write_all(sock, b"hello world"))
         .map(|_| println!("[{}]: write complete", NAME))
@@ -57,7 +57,7 @@ pub fn client_and_then(addr: &SocketAddr) -> impl Future<Item = (), Error = ()> 
 
 // https://tokio.rs/docs/futures/combinators/
 pub fn client_and_then_and_then(addr: &SocketAddr) -> impl Future<Item = (), Error = ()> {
-    const NAME: &str = "echo::client_and_then_and_then";
+    const NAME: &str = "hello::client_and_then_and_then";
     net::tcp::TcpStream::connect(addr)
         .and_then(|sock| tokio::io::write_all(sock, b"hello world"))
         .and_then(|(sock, _)| tokio::io::read_exact(sock, vec![0; 10]))
