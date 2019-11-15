@@ -92,8 +92,27 @@ fn sum(rx: sync::mpsc::Receiver<usize>) -> impl Future<Item = (), Error = ()> {
 
 // Coordinating access to a resource example explained in
 // https://tokio.rs/docs/futures/spawning/
-pub fn coordinate(_requesters: usize) -> impl Future<Item = (), Error = ()> {
-    future::lazy(move || Ok(()))
+pub fn coordinate(requesters: usize) -> impl Future<Item = (), Error = ()> {
+    future::lazy(move || {
+        let (tx, rx) = sync::mpsc::channel(1_024);
+        for _ in 0..requesters {
+            tokio::spawn(ping(tx.clone()));
+        }
+        tokio::spawn(pong(rx));
+        Ok(())
+    })
+}
+
+fn ping(tx: sync::mpsc::Sender<u32>) -> impl Future<Item = (), Error = ()> {
+    const NAME: &str = "spawn::ping";
+    println!("[{}] {:?}", NAME, tx);
+    future::ok(())
+}
+
+fn pong(rx: sync::mpsc::Receiver<u32>) -> impl Future<Item = (), Error = ()> {
+    const NAME: &str = "spawn::pong";
+    println!("[{}] {:?}", NAME, rx);
+    future::ok(())
 }
 
 #[cfg(test)]
