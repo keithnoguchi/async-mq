@@ -8,16 +8,21 @@ pub enum Handler {
     Handling(TcpStream),
 }
 
-pub fn server2(addr: &SocketAddr) -> impl Future<Item = (), Error = ()> {
+pub fn server2(addr: &SocketAddr) -> Box<dyn Future<Item = (), Error = ()> + Send> {
     const NAME: &str = "echo::server2";
-    let _l = match TcpListener::bind(addr) {
+    let l = match TcpListener::bind(addr) {
         Ok(l) => l,
         Err(err) => {
             eprintln!("[{}]: cannot bind: {}", NAME, err);
-            return futures::future::err(());
+            return Box::new(futures::future::err(()));
         }
     };
-    futures::future::ok(())
+    // https://tokio.rs/docs/going-deeper/returning/
+    let s = l
+        .incoming()
+        .map_err(|err| eprintln!("[{}]: cannot accept: {}", NAME, err))
+        .for_each(|_sock| Ok(()));
+    Box::new(s)
 }
 
 pub fn server1(addr: &SocketAddr) -> impl Future<Item = (), Error = ()> {
