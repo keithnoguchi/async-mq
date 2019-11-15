@@ -30,6 +30,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         for _ in 0..client_count {
             tokio::spawn(rustmq::echo::client(&addr3));
         }
+        tokio::spawn(rustmq::spawn::coordinate(client_count));
         Ok(())
     }));
     Ok(())

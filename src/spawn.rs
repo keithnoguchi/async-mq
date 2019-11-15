@@ -25,6 +25,8 @@ pub fn server(addr: &SocketAddr) -> impl Future<Item = (), Error = ()> {
         .map_err(|err| eprintln!("[{}]: {}", NAME, err))
 }
 
+// Background processing example explained in
+// https://tokio.rs/docs/futures/spawning/
 pub fn background(addr: &SocketAddr) -> impl Future<Item = (), Error = ()> {
     const NAME: &str = "spawn::background";
     let addr = *addr;
@@ -56,7 +58,7 @@ pub fn background(addr: &SocketAddr) -> impl Future<Item = (), Error = ()> {
 
 fn sum(rx: mpsc::Receiver<usize>) -> impl Future<Item = (), Error = ()> {
     use futures::Stream;
-    const NAME: &str = "spawn::work";
+    const NAME: &str = "spawn::sum";
     #[derive(Eq, PartialEq)]
     enum Item {
         Value(usize),
@@ -86,6 +88,12 @@ fn sum(rx: mpsc::Receiver<usize>) -> impl Future<Item = (), Error = ()> {
             _ => unreachable!(),
         })
         .map(|_| ())
+}
+
+// Coordinating access to a resource example explained in
+// https://tokio.rs/docs/futures/spawning/
+pub fn coordinate(_clients: usize) -> impl Future<Item = (), Error = ()> {
+    futures::future::ok(())
 }
 
 #[cfg(test)]
