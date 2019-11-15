@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0
-use futures::{sync::mpsc, Future};
-use std::net::SocketAddr;
+use futures::{self, future, sync, Future};
+use std::net;
 use tokio;
 
 // https://tokio.rs/docs/futures/spawning/
-pub fn server(addr: &SocketAddr) -> impl Future<Item = (), Error = ()> {
+pub fn server(addr: &net::SocketAddr) -> impl Future<Item = (), Error = ()> {
     use futures::Stream;
     const NAME: &str = "spawn::server";
     tokio::net::tcp::TcpListener::bind(addr)
@@ -27,12 +27,12 @@ pub fn server(addr: &SocketAddr) -> impl Future<Item = (), Error = ()> {
 
 // Background processing example explained in
 // https://tokio.rs/docs/futures/spawning/
-pub fn background(addr: &SocketAddr) -> impl Future<Item = (), Error = ()> {
+pub fn background(addr: &net::SocketAddr) -> impl Future<Item = (), Error = ()> {
     const NAME: &str = "spawn::background";
     let addr = *addr;
-    futures::future::lazy(move || {
+    future::lazy(move || {
         use futures::{Sink, Stream};
-        let (tx, rx) = mpsc::channel(1_024);
+        let (tx, rx) = sync::mpsc::channel(1_024);
         tokio::spawn(sum(rx));
         println!("[{}] listen on {:?}", NAME, addr);
         tokio::net::tcp::TcpListener::bind(&addr)
@@ -56,7 +56,7 @@ pub fn background(addr: &SocketAddr) -> impl Future<Item = (), Error = ()> {
     })
 }
 
-fn sum(rx: mpsc::Receiver<usize>) -> impl Future<Item = (), Error = ()> {
+fn sum(rx: sync::mpsc::Receiver<usize>) -> impl Future<Item = (), Error = ()> {
     use futures::Stream;
     const NAME: &str = "spawn::sum";
     #[derive(Eq, PartialEq)]
@@ -76,14 +76,14 @@ fn sum(rx: mpsc::Receiver<usize>) -> impl Future<Item = (), Error = ()> {
         .map(Item::Value)
         .chain(futures::stream::once(Ok(Item::Done)))
         .select(interval)
-        .take_while(|item| futures::future::ok(*item != Item::Done));
+        .take_while(|item| future::ok(*item != Item::Done));
     // our logic future.
     items
         .fold(0, |num, item| match item {
-            Item::Value(v) => futures::future::ok(num + v),
+            Item::Value(v) => future::ok(num + v),
             Item::Tick => {
                 println!("[{}]: bytes read = {}", NAME, num);
-                futures::future::ok(0)
+                future::ok(0)
             }
             _ => unreachable!(),
         })
@@ -92,8 +92,8 @@ fn sum(rx: mpsc::Receiver<usize>) -> impl Future<Item = (), Error = ()> {
 
 // Coordinating access to a resource example explained in
 // https://tokio.rs/docs/futures/spawning/
-pub fn coordinate(_clients: usize) -> impl Future<Item = (), Error = ()> {
-    futures::future::ok(())
+pub fn coordinate(_requesters: usize) -> impl Future<Item = (), Error = ()> {
+    future::lazy(move || Ok(()))
 }
 
 #[cfg(test)]
