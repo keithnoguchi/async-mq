@@ -108,6 +108,7 @@ $ make run
 - [Crate lapin-futures]: [Crate futures v0.1] based [Crate lapin]
 - [Crate lapin]: RabbitMQ crate based on AMQP 0.9.1 specification
 - [Tokio Getting Started guide]
+  - [Hello World!]
   - [Working with Futures]
   - [I/O with Tokio]
   - [Going Deeper]
@@ -135,6 +136,7 @@ $ make run
 [crate futures v0.1]: https://docs.rs/futures/0.1.29/
 [future by example]: https://docs.rs/future-by-example/0.1.0/future_by_example/
 [tokio getting started guide]: https://tokio.rs/docs/overview/
+[hello world!]: https://tokio.rs/docs/getting-started/hello-world/
 [working with futures]: https://tokio.rs/docs/futures/overview/
 [going deeper]: https://tokio.rs/docs/going-deeper/futures/
 [i/o with tokio]: https://tokio.rs/docs/io/overview/
