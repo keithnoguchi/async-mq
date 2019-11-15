@@ -3,34 +3,38 @@ use futures;
 use tokio;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let addr = "127.0.0.1:6141".parse::<std::net::SocketAddr>()?;
-    let addr2 = "127.0.0.1:6142".parse::<std::net::SocketAddr>()?;
-    let addr3 = "127.0.0.1:6143".parse::<std::net::SocketAddr>()?;
+    let mut addrs = Vec::<std::net::SocketAddr>::new();
+    for i in 0..4 {
+        let addr = format!("127.0.0.1:614{}", i).parse()?;
+        addrs.push(addr);
+    }
     tokio::run(futures::future::lazy(move || {
         let client_count = 512;
         let count = 1;
-        tokio::spawn(rustmq::hello::server(&addr));
-        tokio::spawn(rustmq::hello::client(&addr));
-        tokio::spawn(rustmq::hello::client_and_then(&addr));
-        tokio::spawn(rustmq::hello::client_and_then_and_then(&addr));
+        tokio::spawn(rustmq::hello::server(&addrs[0]));
+        tokio::spawn(rustmq::hello::client(&addrs[0]));
+        tokio::spawn(rustmq::hello::client_and_then(&addrs[0]));
+        tokio::spawn(rustmq::hello::client_and_then_and_then(&addrs[0]));
         tokio::spawn(rustmq::basic::display(count));
         tokio::spawn(rustmq::basic::better_display(count));
-        tokio::spawn(rustmq::peer::hello(&addr));
-        tokio::spawn(rustmq::peer::peer(&addr));
+        tokio::spawn(rustmq::peer::hello(&addrs[0]));
+        tokio::spawn(rustmq::peer::peer(&addrs[0]));
         tokio::spawn(rustmq::combinator::hello());
-        tokio::spawn(rustmq::spawn::server(&addr2));
+        tokio::spawn(rustmq::spawn::server(&addrs[1]));
         for _ in 0..client_count {
-            tokio::spawn(rustmq::hello::client(&addr2));
+            tokio::spawn(rustmq::hello::client(&addrs[1]));
         }
-        tokio::spawn(rustmq::spawn::background(&addr3));
+        tokio::spawn(rustmq::spawn::background(&addrs[2]));
         // background server takes a while to setup,
         // and hello::client doesn't have a retry capability
         // yet.
         std::thread::sleep(std::time::Duration::from_millis(10));
         for _ in 0..client_count {
-            tokio::spawn(rustmq::hello::client(&addr3));
+            tokio::spawn(rustmq::hello::client(&addrs[2]));
         }
         tokio::spawn(rustmq::spawn::coordinate(client_count));
+        // https://tokio.rs/docs/io/overview/
+        tokio::spawn(rustmq::echo::server(&addrs[3]));
         Ok(())
     }));
     Ok(())
