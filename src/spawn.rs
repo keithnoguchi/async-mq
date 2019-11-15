@@ -93,23 +93,38 @@ fn sum(rx: sync::mpsc::Receiver<usize>) -> impl Future<Item = (), Error = ()> {
 // Coordinating access to a resource example explained in
 // https://tokio.rs/docs/futures/spawning/
 pub fn coordinate(requesters: usize) -> impl Future<Item = (), Error = ()> {
+    const NAME: &str = "spawn::coordinate";
     future::lazy(move || {
         let (tx, rx) = sync::mpsc::channel(1_024);
         for _ in 0..requesters {
-            tokio::spawn(ping(tx.clone()));
+            tokio::spawn(ping(tx.clone()).and_then(|(dur, _)| {
+                println!("[{}]: duration = {:?}", NAME, dur);
+                Ok(())
+            }));
         }
         tokio::spawn(pong(rx));
         Ok(())
     })
 }
 
-fn ping(tx: sync::mpsc::Sender<u32>) -> impl Future<Item = (), Error = ()> {
+type Message = sync::oneshot::Sender<std::time::Duration>;
+
+fn ping(
+    tx: sync::mpsc::Sender<Message>,
+) -> impl Future<Item = (std::time::Duration, sync::mpsc::Sender<Message>), Error = ()> {
+    use futures::Sink;
     const NAME: &str = "spawn::ping";
-    println!("[{}] {:?}", NAME, tx);
-    future::ok(())
+    let (resp_tx, resp_rx) = sync::oneshot::channel();
+    tx.send(resp_tx)
+        .map_err(|err| eprintln!("[{}]: send error: {}", NAME, err))
+        .and_then(|tx| {
+            resp_rx
+                .map(|dur| (dur, tx))
+                .map_err(|err| eprintln!("[{}] recv error: {}", NAME, err))
+        })
 }
 
-fn pong(rx: sync::mpsc::Receiver<u32>) -> impl Future<Item = (), Error = ()> {
+fn pong(rx: sync::mpsc::Receiver<Message>) -> impl Future<Item = (), Error = ()> {
     const NAME: &str = "spawn::pong";
     println!("[{}] {:?}", NAME, rx);
     future::ok(())
