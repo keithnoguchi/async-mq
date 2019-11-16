@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 use futures::{Async, Future, Poll};
+use std::net::SocketAddr;
+use tokio::net::tcp::{ConnectFuture, TcpStream};
 
 #[derive(Debug)]
 pub struct Doubler<T> {
@@ -22,6 +24,56 @@ where
             Async::NotReady => Ok(Async::NotReady),
         }
     }
+}
+
+enum State {
+    Resolving(ResolveFuture),
+    Connecting(ConnectFuture),
+}
+
+pub struct ResolveAndConnect {
+    state: State,
+}
+
+impl Future for ResolveAndConnect {
+    type Item = TcpStream;
+    type Error = std::io::Error;
+    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+        loop {
+            let addr = match self.state {
+                State::Resolving(ref mut fut) => futures::try_ready!(fut.poll()),
+                State::Connecting(ref mut fut) => return fut.poll(),
+            };
+            let connecting = TcpStream::connect(&addr);
+            self.state = State::Connecting(connecting);
+        }
+    }
+}
+
+pub fn resolve_and_connect(host: &'static str) -> ResolveAndConnect {
+    let state = State::Resolving(resolve(host));
+    ResolveAndConnect { state }
+}
+
+struct ResolveFuture {
+    host: &'static str,
+}
+
+impl Future for ResolveFuture {
+    type Item = SocketAddr;
+    type Error = std::io::Error;
+    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+        // It only support the address, e.g. "127.0.0.1", for now.
+        use std::io::{self, ErrorKind};
+        match self.host.parse::<SocketAddr>() {
+            Ok(addr) => Ok(Async::Ready(addr)),
+            Err(err) => Err(io::Error::new(ErrorKind::InvalidInput, format!("{}", err))),
+        }
+    }
+}
+
+fn resolve(host: &'static str) -> ResolveFuture {
+    ResolveFuture { host }
 }
 
 #[cfg(test)]
@@ -85,6 +137,78 @@ mod tests {
             let got =
                 super::double(futures::future::err::<usize, std::io::ErrorKind>(t.data)).poll();
             debug_assert_eq!(t.want, got, "{}", t.name);
+        }
+    }
+    #[test]
+    fn resolve_ok() {
+        use futures::{Async, Future};
+        use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
+        struct Test {
+            name: &'static str,
+            addr: &'static str,
+            want: Async<SocketAddr>,
+        };
+        let tests = [
+            Test {
+                name: "IPv4 localhost:8080",
+                addr: "127.0.0.1:8080",
+                want: Async::Ready(SocketAddr::V4(SocketAddrV4::new(
+                    Ipv4Addr::new(127, 0, 0, 1),
+                    8080,
+                ))),
+            },
+            Test {
+                name: "IPv4 8.8.8.8:52",
+                addr: "8.8.8.8:52",
+                want: Async::Ready(SocketAddr::V4(SocketAddrV4::new(
+                    Ipv4Addr::new(8, 8, 8, 8),
+                    52,
+                ))),
+            },
+            Test {
+                name: "IPv4 1.2.3.4:56789",
+                addr: "1.2.3.4:56789",
+                want: Async::Ready(SocketAddr::V4(SocketAddrV4::new(
+                    Ipv4Addr::new(1, 2, 3, 4),
+                    56789,
+                ))),
+            },
+            Test {
+                name: "IPv6 ::1:80",
+                addr: "[::1]:80",
+                want: Async::Ready(SocketAddr::V6(SocketAddrV6::new(
+                    Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1),
+                    80,
+                    0,
+                    0,
+                ))),
+            },
+            Test {
+                name: "IPv6 2002::53:53",
+                addr: "[2002::53]:53",
+                want: Async::Ready(SocketAddr::V6(SocketAddrV6::new(
+                    Ipv6Addr::new(0x2002, 0, 0, 0, 0, 0, 0, 0x53),
+                    53,
+                    0,
+                    0,
+                ))),
+            },
+            Test {
+                name: "IPv6 2002::1:80",
+                addr: "[2002::1]:80",
+                want: Async::Ready(SocketAddr::V6(SocketAddrV6::new(
+                    Ipv6Addr::new(0x2002, 0, 0, 0, 0, 0, 0, 1),
+                    80,
+                    0,
+                    0,
+                ))),
+            },
+        ];
+        for t in &tests {
+            match super::resolve(t.addr).poll() {
+                Ok(got) => debug_assert_eq!(t.want, got, "{}", t.name),
+                Err(err) => panic!("{}: {}", t.name, err),
+            }
         }
     }
 }
