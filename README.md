@@ -21,6 +21,7 @@
 - [I/O with Tokio]
   - [echo]: [I/O overview] example
 - [Going Deeper]
+  - [deeper]: [Implementing Future] example
 - [Tokio Internals]
 
 [hello]: src/hello.rs
@@ -30,6 +31,7 @@
 [fibonacci]: src/fibonacci.rs
 [spawn]: src/spawn.rs
 [echo]: src/echo.rs
+[deeper]: src/deeper.rs
 [hello world]: https://tokio.rs/docs/getting-started/hello-world/
 [basic futures]: https://tokio.rs/docs/futures/basic/
 [getting asynchronous]: https://tokio.rs/docs/futures/getting_asynchronous/
@@ -37,6 +39,7 @@
 [streams]: https://tokio.rs/docs/futures/streams/
 [spawning]: https://tokio.rs/docs/futures/spawning/
 [i/o overview]: https://tokio.rs/docs/io/overview/
+[implementing future]: https://tokio.rs/docs/going-deeper/futures/
 
 ## Test
 
