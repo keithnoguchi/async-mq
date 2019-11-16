@@ -1,11 +1,19 @@
 // SPDX-License-Identifier: GPL-2.0
-use futures::{Future, Stream};
+use futures::{Future, Poll, Stream};
 use std::net::SocketAddr;
 use tokio::net::{TcpListener, TcpStream};
 
 pub enum Handler {
     Greeting(TcpStream),
     Handling(TcpStream),
+}
+
+impl Future for Handler {
+    type Item = ();
+    type Error = ();
+    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+        Ok(futures::Async::NotReady)
+    }
 }
 
 pub fn server2(addr: &SocketAddr) -> Box<dyn Future<Item = (), Error = ()> + Send> {
