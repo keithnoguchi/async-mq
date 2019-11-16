@@ -45,6 +45,16 @@ mod tests {
                 data: 2,
                 want: Async::Ready(4),
             },
+            Test {
+                name: "16usize",
+                data: 16,
+                want: Async::Ready(32),
+            },
+            Test {
+                name: "10_001usize",
+                data: 10_001,
+                want: Async::Ready(20_002),
+            },
         ];
         for t in &tests {
             let got = super::double(futures::future::ok::<usize, ()>(t.data))
