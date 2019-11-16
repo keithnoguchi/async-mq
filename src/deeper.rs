@@ -27,7 +27,7 @@ where
 #[cfg(test)]
 mod tests {
     #[test]
-    fn double_poll_ok() {
+    fn double_ok() {
         use futures::{Async, Future};
         struct Test {
             name: &'static str,
@@ -60,6 +60,32 @@ mod tests {
             let got = super::double(futures::future::ok::<usize, ()>(t.data))
                 .poll()
                 .unwrap();
+            debug_assert_eq!(t.want, got, "{}", t.name);
+        }
+    }
+    #[test]
+    fn double_err() {
+        use futures::{Async, Future};
+        struct Test {
+            name: &'static str,
+            data: std::io::ErrorKind,
+            want: Result<Async<usize>, std::io::ErrorKind>,
+        };
+        let tests = [
+            Test {
+                name: "InvalidInput",
+                data: std::io::ErrorKind::InvalidInput,
+                want: Err(std::io::ErrorKind::InvalidInput),
+            },
+            Test {
+                name: "InvalidData",
+                data: std::io::ErrorKind::InvalidData,
+                want: Err(std::io::ErrorKind::InvalidData),
+            },
+        ];
+        for t in &tests {
+            let got =
+                super::double(futures::future::err::<usize, std::io::ErrorKind>(t.data)).poll();
             debug_assert_eq!(t.want, got, "{}", t.name);
         }
     }
