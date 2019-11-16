@@ -32,34 +32,32 @@ mod tests {
         struct Test {
             name: &'static str,
             data: usize,
-            want: Async<usize>,
+            want: Result<Async<usize>, ()>,
         };
         let tests = [
             Test {
                 name: "1usize",
                 data: 1,
-                want: Async::Ready(2),
+                want: Ok(Async::Ready(2)),
             },
             Test {
                 name: "2usize",
                 data: 2,
-                want: Async::Ready(4),
+                want: Ok(Async::Ready(4)),
             },
             Test {
                 name: "16usize",
                 data: 16,
-                want: Async::Ready(32),
+                want: Ok(Async::Ready(32)),
             },
             Test {
                 name: "10_001usize",
                 data: 10_001,
-                want: Async::Ready(20_002),
+                want: Ok(Async::Ready(20_002)),
             },
         ];
         for t in &tests {
-            let got = super::double(futures::future::ok::<usize, ()>(t.data))
-                .poll()
-                .unwrap();
+            let got = super::double(futures::future::ok::<usize, ()>(t.data)).poll();
             debug_assert_eq!(t.want, got, "{}", t.name);
         }
     }
