@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 use futures::{Async, Future, Poll};
 
+#[derive(Debug)]
 pub struct Doubler<T> {
     inner: T,
 }
@@ -26,8 +27,30 @@ where
 #[cfg(test)]
 mod tests {
     #[test]
-    fn double() {
-        use futures::{future::ok, Async, Future};
-        assert_eq!(Async::Ready(1), ok::<usize, ()>(1).poll().unwrap());
+    fn double_poll_ok() {
+        use futures::{Async, Future};
+        struct Test {
+            name: &'static str,
+            data: usize,
+            want: Async<usize>,
+        };
+        let tests = [
+            Test {
+                name: "1usize",
+                data: 1,
+                want: Async::Ready(2),
+            },
+            Test {
+                name: "2usize",
+                data: 2,
+                want: Async::Ready(4),
+            },
+        ];
+        for t in &tests {
+            let got = super::double(futures::future::ok::<usize, ()>(t.data))
+                .poll()
+                .unwrap();
+            debug_assert_eq!(t.want, got, "{}", t.name);
+        }
     }
 }
