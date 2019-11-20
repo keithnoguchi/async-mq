@@ -1,6 +1,6 @@
 # rustmq
 
-[RabbitMQ] with [Crate lapin-futures] and [Crate tokio] for fun.
+[RabbitMQ] with [Crate lapin] for fun.
 
 [![DroneCI]](https://cloud.drone.io/keithnoguchi/rustmq)
 [![CircleCI]](https://circleci.com/gh/keithnoguchi/workflows/rustmq)
@@ -73,45 +73,29 @@ test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
 
 ## Execution
 
-Currently, [main.rs] is the demonstration of [tokio getting-started] guide
-to get familier with [tokio runtime].  Here is the snippet of `make run`,
-which is a wrapper of `cargo run` as in [Makefile]:
+Currently, [main.rs] hosts the [crate lapin] example to show the producer
+and consumer communication, as shown below:
 
 ```sh
-$ make run
-   Compiling rustmq v0.1.0 (/home/kei/git/rustmq)
-    Finished dev [unoptimized + debuginfo] target(s) in 0.83s
+air2$ make run
+    Finished dev [unoptimized + debuginfo] target(s) in 0.05s
      Running `target/debug/rustmq`
-[peer::HelloWorld]: poll()
-[peer::HelloWorld]: poll()
-[basic::Display]: hello world
-[peer::HelloWorld]: Connecting
-[peer::HelloWorld]: Connected
-[basic::BetterDisplay]: hello world
-[echo::server]: connection from TcpStream { addr: V4(127.0.0.1:6142), peer: V4(127.0.0.1:48716), fd: 21 }
-[echo::server]: connection from TcpStream { addr: V4(127.0.0.1:6142), peer: V4(127.0.0.1:48718), fd: 16 }
-[peer::GetPeerAddr[echo::server]: connection from TcpStream { addr: V4(127.0.0.1:6142), peer: V4(127.0.0.1:48720), fd: 22
-}
-]: NotReady
-[combinator::HelloWorld] poll()
-[echo::server]: connection from TcpStream { addr: V4(127.0.0.1:6142), peer: V4(127.0.0.1:48722), fd: 23 }
-[combinator::hello]: [combinator::HelloWorld]: hello world
-[echo::server]: connection from TcpStream { addr: V4(127.0.0.1:6142), peer: V4(127.0.0.1:48724), fd: 24 }
-[echo::client_and_then]: write complete
-[peer::GetPeerAddr]: peer address = 127.0.0.1:6142
-[echo::server]: wrote 11 bytes
-[echo::client]: created stream
-[echo::client]: wrote to stream; success=true
-[echo::server]: wrote 0 bytes
-[echo::server]: wrote 11 bytes
-[echo::server]: wrote 12 bytes
-[echo::client_and_then_and_then]: got [104, 101, 108, 108, 111, 32, 119, 111, 114, 108]
-[echo::server]: error: Connection reset by peer (os error 104)
-^C
+..................................................................................................
+..................................................................................................
+..................................................................................................
+..................................................................................................
+..................................................................................................
+..................................................................................................
+..................................................................................................
+..................................................................................................
+..................................................................................................
+..................................................................................................
+............................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................^C
+make: *** [Makefile:11: run] Interrupt
+
 ```
 
 [main.rs]: src/main.rs
-[Makefile]: Makefile
 
 ## References
 

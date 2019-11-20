@@ -1,42 +1,81 @@
 // SPDX-License-Identifier: GPL-2.0
-use futures;
-use tokio;
+use lapin::message::DeliveryResult;
+use lapin::options::*;
+use lapin::types::FieldTable;
+use lapin::ConsumerDelegate;
+use lapin::{BasicProperties, Channel, Connection, ConnectionProperties};
+use std::env;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut addrs = Vec::<std::net::SocketAddr>::new();
-    for i in 0..5 {
-        let addr = format!("127.0.0.1:614{}", i).parse()?;
-        addrs.push(addr);
+#[derive(Clone, Debug)]
+struct Subscriber {
+    channel: Channel,
+}
+
+impl ConsumerDelegate for Subscriber {
+    fn on_new_delivery(&self, delivery: DeliveryResult) {
+        if let Some(delivery) = delivery.unwrap() {
+            print!(".");
+            self.channel
+                .basic_ack(delivery.delivery_tag, BasicAckOptions::default())
+                .wait()
+                .expect("basic_ack")
+        }
     }
-    tokio::run(futures::future::lazy(move || {
-        let client_count = 512;
-        let count = 1;
-        tokio::spawn(rustmq::hello::server(&addrs[0]));
-        tokio::spawn(rustmq::hello::client(&addrs[0]));
-        tokio::spawn(rustmq::hello::client_and_then(&addrs[0]));
-        tokio::spawn(rustmq::hello::client_and_then_and_then(&addrs[0]));
-        tokio::spawn(rustmq::basic::display(count));
-        tokio::spawn(rustmq::basic::better_display(count));
-        tokio::spawn(rustmq::peer::hello(&addrs[0]));
-        tokio::spawn(rustmq::peer::peer(&addrs[0]));
-        tokio::spawn(rustmq::combinator::hello());
-        tokio::spawn(rustmq::spawn::server(&addrs[1]));
-        for _ in 0..client_count {
-            tokio::spawn(rustmq::hello::client(&addrs[1]));
-        }
-        tokio::spawn(rustmq::spawn::background(&addrs[2]));
-        // background server takes a while to setup,
-        // and hello::client doesn't have a retry capability
-        // yet.
-        std::thread::sleep(std::time::Duration::from_millis(10));
-        for _ in 0..client_count {
-            tokio::spawn(rustmq::hello::client(&addrs[2]));
-        }
-        tokio::spawn(rustmq::spawn::coordinate(client_count));
-        // https://tokio.rs/docs/io/overview/
-        tokio::spawn(rustmq::echo::server1(&addrs[3]));
-        tokio::spawn(rustmq::echo::server2(&addrs[4]));
-        Ok(())
-    }));
-    Ok(())
+}
+
+fn parse() -> String {
+    let scheme = env::var("AMQP_SCHEME").unwrap_or_default();
+    let user = env::var("AMQP_USERNAME").unwrap_or_default();
+    let pass = env::var("AMQP_PASSWORD").unwrap_or_default();
+    let cluster = env::var("AMQP_CLUSTER").unwrap_or_default();
+    let vhost = env::var("AMQP_VHOST").unwrap_or_default();
+    format!("{}://{}:{}@{}/{}", scheme, user, pass, cluster, vhost)
+}
+
+fn main() {
+    let addr = parse();
+    let c = Connection::connect(&addr, ConnectionProperties::default());
+    let c = c.wait().expect("connection error");
+    let a = c.create_channel().wait().expect("channel a");
+    let b = c.create_channel().wait().expect("channel b");
+    a.queue_declare(
+        "hello",
+        QueueDeclareOptions::default(),
+        FieldTable::default(),
+    )
+    .wait()
+    .expect("hello queue on a");
+    let queue = b
+        .queue_declare(
+            "hello",
+            QueueDeclareOptions::default(),
+            FieldTable::default(),
+        )
+        .wait()
+        .expect("queue_declare");
+
+    b.clone()
+        .basic_consume(
+            &queue,
+            "my_consumer",
+            BasicConsumeOptions::default(),
+            FieldTable::default(),
+        )
+        .wait()
+        .expect("basic_consume")
+        .set_delegate(Box::new(Subscriber { channel: b }));
+
+    let payload = b"Hello world!";
+
+    loop {
+        a.basic_publish(
+            "",
+            "hello",
+            BasicPublishOptions::default(),
+            payload.to_vec(),
+            BasicProperties::default(),
+        )
+        .wait()
+        .expect("basic_publish");
+    }
 }
