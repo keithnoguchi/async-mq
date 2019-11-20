@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0
+use futures_executor::LocalPool;
+use futures_util::{future::FutureExt, stream::StreamExt, task::LocalSpawnExt};
 use lapin::options::*;
 use lapin::types::FieldTable;
-use lapin::{BasicProperties, Connection, ConnectionProperties};
-use rustmq;
+use lapin::{BasicProperties, Connection, ConnectionProperties, Result};
 use std::env;
 
 fn parse() -> String {
@@ -14,51 +15,63 @@ fn parse() -> String {
     format!("{}://{}:{}@{}/{}", scheme, user, pass, cluster, vhost)
 }
 
-fn main() {
-    let addr = parse();
-    let con = Connection::connect(&addr, ConnectionProperties::default());
-    let con = con.wait().expect("connection error");
-    // Consumers.
-    for i in { b'a'..b'z' } {
-        let c = con.create_channel().wait().unwrap();
-        let queue = c
-            .queue_declare(
-                "hello",
-                QueueDeclareOptions::default(),
-                FieldTable::default(),
-            )
-            .wait()
-            .expect("queue_declare");
-        c.clone()
-            .basic_consume(
-                &queue,
-                "my_consumer",
-                BasicConsumeOptions::default(),
-                FieldTable::default(),
-            )
-            .wait()
-            .expect("basic_consume")
-            .set_delegate(Box::new(rustmq::Consumer::new(i.into(), c)));
-    }
-    // Producer.
-    let payload = b"Hello world!";
-    let p = con.create_channel().wait().expect("producer channel a");
-    p.queue_declare(
-        "hello",
-        QueueDeclareOptions::default(),
-        FieldTable::default(),
-    )
-    .wait()
-    .expect("hello queue by producer");
-    loop {
-        p.basic_publish(
-            "",
+fn main() -> Result<()> {
+    let mut exec = LocalPool::new();
+    let spawner = exec.spawner();
+
+    exec.run_until(async {
+        let addr = parse();
+        let con = Connection::connect(&addr, ConnectionProperties::default()).await?;
+
+        // Consumers.
+        for i in { b'a'..b'z' } {
+            let c = con.create_channel().await?;
+            let queue = c
+                .queue_declare(
+                    "hello",
+                    QueueDeclareOptions::default(),
+                    FieldTable::default(),
+                )
+                .await?;
+            let consumer = c
+                .clone()
+                .basic_consume(
+                    &queue,
+                    "my_consumer",
+                    BasicConsumeOptions::default(),
+                    FieldTable::default(),
+                )
+                .await?;
+            let x: char = i.into();
+            let _consumer = spawner.spawn_local(async move {
+                consumer
+                    .for_each(move |delivery| {
+                        eprint!("{}", x);
+                        let delivery = delivery.expect("error caught in consumer");
+                        c.basic_ack(delivery.delivery_tag, BasicAckOptions::default())
+                            .map(|_| ())
+                    })
+                    .await
+            });
+        }
+        // Producer.
+        let payload = b"Hello world!";
+        let p = con.create_channel().await?;
+        p.queue_declare(
             "hello",
-            BasicPublishOptions::default(),
-            payload.to_vec(),
-            BasicProperties::default(),
+            QueueDeclareOptions::default(),
+            FieldTable::default(),
         )
-        .wait()
-        .expect("basic_publish");
-    }
+        .await?;
+        loop {
+            p.basic_publish(
+                "",
+                "hello",
+                BasicPublishOptions::default(),
+                payload.to_vec(),
+                BasicProperties::default(),
+            )
+            .await?;
+        }
+    })
 }
