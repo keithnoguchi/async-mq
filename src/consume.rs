@@ -5,19 +5,20 @@ use lapin::{Channel, ConsumerDelegate};
 
 #[derive(Clone, Debug)]
 pub struct Consumer {
+    name: &'static str,
     chan: Channel,
 }
 
 impl Consumer {
-    pub fn new(chan: Channel) -> Self {
-        Self { chan }
+    pub fn new(name: &'static str, chan: Channel) -> Self {
+        Self { name, chan }
     }
 }
 
 impl ConsumerDelegate for Consumer {
     fn on_new_delivery(&self, delivery: DeliveryResult) {
         if let Some(delivery) = delivery.unwrap() {
-            print!(".");
+            print!("{}", self.name);
             self.chan
                 .basic_ack(delivery.delivery_tag, BasicAckOptions::default())
                 .wait()

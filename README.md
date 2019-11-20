@@ -10,89 +10,31 @@
 
 ## Modules
 
-- [Hello World!] examples
-  - [hello]: [Hello World] example
-- [Working with Futures] examples
-  - [basic]: [Basic futures] example
-  - [peer]: [Getting asynchronous] example
-  - [combinator]: [Combinators] example
-  - [fibonacci]: [Streams] example
-  - [spawn]: [Spawning] example
-- [I/O with Tokio]
-  - [echo]: [I/O overview] example
-- [Going Deeper]
-  - [deeper]: [Implementing Future] example
-- [Tokio Internals]
+- [consume]: for Struct Consumer
 
-[hello]: src/hello.rs
-[basic]: src/basic.rs
-[peer]: src/peer.rs
-[combinator]: src/combinator.rs
-[fibonacci]: src/fibonacci.rs
-[spawn]: src/spawn.rs
-[echo]: src/echo.rs
-[deeper]: src/deeper.rs
-[hello world]: https://tokio.rs/docs/getting-started/hello-world/
-[basic futures]: https://tokio.rs/docs/futures/basic/
-[getting asynchronous]: https://tokio.rs/docs/futures/getting_asynchronous/
-[combinators]: https://tokio.rs/docs/futures/combinators/
-[streams]: https://tokio.rs/docs/futures/streams/
-[spawning]: https://tokio.rs/docs/futures/spawning/
-[i/o overview]: https://tokio.rs/docs/io/overview/
-[implementing future]: https://tokio.rs/docs/going-deeper/futures/
-
-## Test
-
-Currently, there are ten unit test in some of the modules, though it's not
-actually testing anything but just printing out the result.  I'll come back
-later to make it actaully test the behavior.
-
-```sh
-$ make test | tail -16
-    Finished dev [unoptimized + debuginfo] target(s) in 0.02s
-     Running target/debug/deps/rustmq-a5a15abce52d5c74
-[combinator::HelloWorld] poll()
-     Running target/debug/deps/rustmq-e666ab5ce730d6e4
-   Doc-tests rustmq
-value #48 = 7778742049
-value #49 = 12586269025
-test fibonacci::test::display_slow_fibonacci ... ok
-
-test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
-
-
-running 0 tests
-
-test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
-
-
-running 0 tests
-
-test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
-```
+[consume]: src/consume.rs
 
 ## Execution
 
-Currently, [main.rs] hosts the [crate lapin] example to show the producer
-and consumer communication, as shown below:
+Currently, [main.rs] demonstrate [crate lapin] example with two consumers, which just
+dumps the letter `b` or `c` out to the stdout, just to prove the multiple consumers
+over the single AMQP connection.
 
 ```sh
 air2$ make run
-    Finished dev [unoptimized + debuginfo] target(s) in 0.05s
+    Finished dev [unoptimized + debuginfo] target(s) in 0.06s
      Running `target/debug/rustmq`
-..................................................................................................
-..................................................................................................
-..................................................................................................
-..................................................................................................
-..................................................................................................
-..................................................................................................
-..................................................................................................
-..................................................................................................
-..................................................................................................
-..................................................................................................
-............................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................^C
-make: *** [Makefile:11: run] Interrupt
-
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbcbbbbbcccccbbbbbbcccccccccccbbbbbbbbbbbccccccbcbcbccbbbccbcbcbc
+bcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbc
+bcbcbcbcbcbcbbccbcbcbcbcbcbcbcbcbcbbccbcbcbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbc
+cccccccccccccccccbbbbbbbbbbbbbbbbbbccccccccccccccccccbbbbbbbbbbbbbbccccccccccccccccccccccccccccccc
+ccccccccccccccccccccbcccccccbbbbbbbbbbbbbbbbbcccccccccccbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbc
+bcbcbcbcbcbcbcbbccbcbcbcbcbcbcbcbbccbcbcbcbcbcbcccccccbbbbbbbbbbccccbccbcbbcccbbbbcccbbcbcbbcccccb
+bbccbbcbbbccbcbcbcbcbcbcbccbbcbcbcbbcbccbcbcbcbcbcbbccbbbcccbbccbbccbccbccbbbcbcbbccbcbbccbcbcbcbc
+bcbbcbcccbbcbcbcbcbcbcbcbbccbcbcbbccbcbbccbbccbbbbccccbcbccbbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbc
+cbbbbbccccbbccbcbcbcbcbcbbccbcbcbccbbccbbcbccbbbcbbccccbbbccbcbbccbcbcbccbcbbcbcbccbcbbcbcbcbcbcbc
+bcbcbcbcbcbcccccccbbbbbbbbbbbbbccccccccccbbbbcbcbbcccbbcbcccbbbbbbbbbbccccccccbcbbbccccbbcbbccbbccbbccbcbbccbbcccbbcbbcbbcccbbccbcbbbcccbbccbcbbccbcbbccbcbcbbbcccbccbbcbccbbcbbccbcbbccbccbbbbccbccbbcbccbcbcbbccbccbbbccbcbbccbcbcbbccbcbcbcbcbcbcbcbcbcbbbcccbbbcccccbbbbbbbbbcccccccbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbbcccbbbccbcbcbcbcbcbcbcbcbcbcbcbcbcbbcccbbcbcbcbcccccbbbbccbbbcbcbbcccbbbcccbbbccbcbbccccccbbbbbccccbbbbcbcbccbcbbbccbcbbccbcbccbcbcbbcbcbcbcbcbcbcbcbbccbcbcbbccbcbcbcbccbbccbbcbbbcccbcbbcbbcccbbcccbbcbcbccbbcbcbcbcbcbcbcbcbcbcbbccbbcbccbccbbccbbccbbcbcbcbcbcbbbbcccccbbcbbccbcbbccbbcccbbccbbcbcbcbcbcbccbcbcbbbccbbccbcbccbbcbcbcbcbcbcbccbbccbbcbcbbccbcbcbcbbbcccbcbcbcbcbbcccbbcbcbbbbbbbbbbbbbcccccccccccccccccccccccccbbbbbbbbbbbbbbcccccbbbbccbbbccbbccbcbbbcccbbbbccccccbbccbbcbbcbcbccbbcbcbcbcbcbcbcbcbcbccbbcbbccbcbcbcbcbcbcbcbcbcbcbcbcbccbbcbbbbbcccccccbbbbbbccccbbbbbcccccbbbbbccccbbbbcccccbbccbcbcbcbbccbcbcbcbcbbccbccbbcbcbcbcbcbcbcbcbcbcbcbcbbccbbccbcbbccbbccbbccbbcccbbccbbbccbcbcbcbbbbbccccbbbbbbccccccccccccbbbbbbccccccbbb^Cmake: *** [Makefile:11: run] Interrupt
 ```
 
 [main.rs]: src/main.rs

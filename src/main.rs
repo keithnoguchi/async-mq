@@ -16,10 +16,11 @@ fn parse() -> String {
 
 fn main() {
     let addr = parse();
-    let c = Connection::connect(&addr, ConnectionProperties::default());
-    let c = c.wait().expect("connection error");
-    let a = c.create_channel().wait().expect("channel a");
-    let b = c.create_channel().wait().expect("channel b");
+    let con = Connection::connect(&addr, ConnectionProperties::default());
+    let con = con.wait().expect("connection error");
+    let a = con.create_channel().wait().expect("producer channel a");
+    let b = con.create_channel().wait().expect("consumer channel b");
+    let c = con.create_channel().wait().expect("consumer channel c");
     a.queue_declare(
         "hello",
         QueueDeclareOptions::default(),
@@ -27,7 +28,7 @@ fn main() {
     )
     .wait()
     .expect("hello queue on a");
-    let queue = b
+    let queue1 = b
         .queue_declare(
             "hello",
             QueueDeclareOptions::default(),
@@ -38,6 +39,25 @@ fn main() {
 
     b.clone()
         .basic_consume(
+            &queue1,
+            "my_consumer",
+            BasicConsumeOptions::default(),
+            FieldTable::default(),
+        )
+        .wait()
+        .expect("basic_consume")
+        .set_delegate(Box::new(rustmq::Consumer::new("b", b)));
+
+    let queue = c
+        .queue_declare(
+            "hello",
+            QueueDeclareOptions::default(),
+            FieldTable::default(),
+        )
+        .wait()
+        .expect("queue_declare");
+    c.clone()
+        .basic_consume(
             &queue,
             "my_consumer",
             BasicConsumeOptions::default(),
@@ -45,10 +65,9 @@ fn main() {
         )
         .wait()
         .expect("basic_consume")
-        .set_delegate(Box::new(rustmq::Consumer::new(b)));
+        .set_delegate(Box::new(rustmq::Consumer::new("c", c)));
 
     let payload = b"Hello world!";
-
     loop {
         a.basic_publish(
             "",
