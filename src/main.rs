@@ -18,58 +18,40 @@ fn main() {
     let addr = parse();
     let con = Connection::connect(&addr, ConnectionProperties::default());
     let con = con.wait().expect("connection error");
-    let a = con.create_channel().wait().expect("producer channel a");
-    let b = con.create_channel().wait().expect("consumer channel b");
-    let c = con.create_channel().wait().expect("consumer channel c");
-    a.queue_declare(
+    let p = con.create_channel().wait().expect("producer channel a");
+    p.queue_declare(
         "hello",
         QueueDeclareOptions::default(),
         FieldTable::default(),
     )
     .wait()
-    .expect("hello queue on a");
-    let queue1 = b
-        .queue_declare(
-            "hello",
-            QueueDeclareOptions::default(),
-            FieldTable::default(),
-        )
-        .wait()
-        .expect("queue_declare");
+    .expect("hello queue by producer");
 
-    b.clone()
-        .basic_consume(
-            &queue1,
-            "my_consumer",
-            BasicConsumeOptions::default(),
-            FieldTable::default(),
-        )
-        .wait()
-        .expect("basic_consume")
-        .set_delegate(Box::new(rustmq::Consumer::new("b", b)));
-
-    let queue = c
-        .queue_declare(
-            "hello",
-            QueueDeclareOptions::default(),
-            FieldTable::default(),
-        )
-        .wait()
-        .expect("queue_declare");
-    c.clone()
-        .basic_consume(
-            &queue,
-            "my_consumer",
-            BasicConsumeOptions::default(),
-            FieldTable::default(),
-        )
-        .wait()
-        .expect("basic_consume")
-        .set_delegate(Box::new(rustmq::Consumer::new("c", c)));
-
+    // Create 26 consumers over the single AMQP connection.
+    for i in { b'a'..b'z' } {
+        let c = con.create_channel().wait().unwrap();
+        let queue = c
+            .queue_declare(
+                "hello",
+                QueueDeclareOptions::default(),
+                FieldTable::default(),
+            )
+            .wait()
+            .expect("queue_declare");
+        c.clone()
+            .basic_consume(
+                &queue,
+                "my_consumer",
+                BasicConsumeOptions::default(),
+                FieldTable::default(),
+            )
+            .wait()
+            .expect("basic_consume")
+            .set_delegate(Box::new(rustmq::Consumer::new(i.into(), c)));
+    }
     let payload = b"Hello world!";
     loop {
-        a.basic_publish(
+        p.basic_publish(
             "",
             "hello",
             BasicPublishOptions::default(),

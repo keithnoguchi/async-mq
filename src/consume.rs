@@ -5,12 +5,12 @@ use lapin::{Channel, ConsumerDelegate};
 
 #[derive(Clone, Debug)]
 pub struct Consumer {
-    name: &'static str,
+    name: char,
     chan: Channel,
 }
 
 impl Consumer {
-    pub fn new(name: &'static str, chan: Channel) -> Self {
+    pub fn new(name: char, chan: Channel) -> Self {
         Self { name, chan }
     }
 }
