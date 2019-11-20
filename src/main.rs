@@ -3,7 +3,8 @@ use futures_executor::LocalPool;
 use futures_util::{future::FutureExt, stream::StreamExt, task::LocalSpawnExt};
 use lapin::options::*;
 use lapin::types::FieldTable;
-use lapin::{BasicProperties, Connection, ConnectionProperties, Result};
+use lapin::{BasicProperties, ConnectionProperties, Result};
+use rustmq::Connection;
 use std::env;
 
 fn parse() -> String {
