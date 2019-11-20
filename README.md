@@ -45,6 +45,7 @@ tuvwyxabcdefghijklmnopqsrtuvwxyabcdefghijklmnopqrstuvwxyabcdefghijkmlonpqrstvuxa
 - [RabbitMQ]: The most widely deployed open source message broker
 - [Crate lapin-futures]: [Crate futures v0.1] based [Crate lapin]
 - [Crate lapin]: RabbitMQ crate based on AMQP 0.9.1 specification
+- [The Async Book]: Asynchronous Programming in Rust
 - [Tokio Getting Started guide]
   - [Hello World!]
   - [Working with Futures]
@@ -67,6 +68,7 @@ tuvwyxabcdefghijklmnopqsrtuvwxyabcdefghijklmnopqrstuvwxyabcdefghijkmlonpqrstvuxa
 [crate tokio]: https://tokio.rs/
 [crate tokio v0.2]: https://docs.rs/tokio/0.2.0-alpha.6/tokio/
 [crate tokio v0.1]: https://docs.rs/tokio/0.1.22/tokio/
+[the async book]: https://rust-lang.github.io/async-book/
 [tokio getting-started]: https://tokio.rs/docs/getting-started/hello-world/
 [tokio runtime]: https://tokio.rs/docs/getting-started/runtime/
 [crate futures]: http://futures.rs/
