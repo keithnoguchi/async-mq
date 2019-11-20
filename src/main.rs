@@ -1,27 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0
-use lapin::message::DeliveryResult;
 use lapin::options::*;
 use lapin::types::FieldTable;
-use lapin::ConsumerDelegate;
-use lapin::{BasicProperties, Channel, Connection, ConnectionProperties};
+use lapin::{BasicProperties, Connection, ConnectionProperties};
+use rustmq;
 use std::env;
-
-#[derive(Clone, Debug)]
-struct Subscriber {
-    channel: Channel,
-}
-
-impl ConsumerDelegate for Subscriber {
-    fn on_new_delivery(&self, delivery: DeliveryResult) {
-        if let Some(delivery) = delivery.unwrap() {
-            print!(".");
-            self.channel
-                .basic_ack(delivery.delivery_tag, BasicAckOptions::default())
-                .wait()
-                .expect("basic_ack")
-        }
-    }
-}
 
 fn parse() -> String {
     let scheme = env::var("AMQP_SCHEME").unwrap_or_default();
@@ -63,7 +45,7 @@ fn main() {
         )
         .wait()
         .expect("basic_consume")
-        .set_delegate(Box::new(Subscriber { channel: b }));
+        .set_delegate(Box::new(rustmq::Consumer::new(b)));
 
     let payload = b"Hello world!";
 
