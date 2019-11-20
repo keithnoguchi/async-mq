@@ -18,16 +18,7 @@ fn main() {
     let addr = parse();
     let con = Connection::connect(&addr, ConnectionProperties::default());
     let con = con.wait().expect("connection error");
-    let p = con.create_channel().wait().expect("producer channel a");
-    p.queue_declare(
-        "hello",
-        QueueDeclareOptions::default(),
-        FieldTable::default(),
-    )
-    .wait()
-    .expect("hello queue by producer");
-
-    // Create 26 consumers over the single AMQP connection.
+    // Consumers.
     for i in { b'a'..b'z' } {
         let c = con.create_channel().wait().unwrap();
         let queue = c
@@ -49,7 +40,16 @@ fn main() {
             .expect("basic_consume")
             .set_delegate(Box::new(rustmq::Consumer::new(i.into(), c)));
     }
+    // Producer.
     let payload = b"Hello world!";
+    let p = con.create_channel().wait().expect("producer channel a");
+    p.queue_declare(
+        "hello",
+        QueueDeclareOptions::default(),
+        FieldTable::default(),
+    )
+    .wait()
+    .expect("hello queue by producer");
     loop {
         p.basic_publish(
             "",
