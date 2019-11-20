@@ -44,6 +44,7 @@ tuvwyxabcdefghijklmnopqsrtuvwxyabcdefghijklmnopqrstuvwxyabcdefghijkmlonpqrstvuxa
 
 - [RabbitMQ]: The most widely deployed open source message broker
 - [Crate lapin]: RabbitMQ crate based on AMQP 0.9.1 specification
+  - [Lapin futures v0.3 example]: [Crate futures v0.3] example
   - [Crate lapin-futures]: [Crate futures v0.1] based [Crate lapin]
 - [The Async Book]: Asynchronous Programming in Rust
 - [Crate futures]:
@@ -65,6 +66,7 @@ tuvwyxabcdefghijklmnopqsrtuvwxyabcdefghijklmnopqrstuvwxyabcdefghijkmlonpqrstvuxa
 
 [RabbitMQ]: https://www.rabbitmq.com
 [crate lapin]: https://docs.rs/lapin/0.28.2/lapin/
+[lapin futures v0.3 example]: https://github.com/sozu-proxy/lapin/blob/master/examples/pubsub_futures.rs
 [crate lapin-futures]: https://docs.rs/lapin-futures/0.28.2/lapin_futures/
 [the async book]: https://rust-lang.github.io/async-book/
 [crate futures]: http://futures.rs/
