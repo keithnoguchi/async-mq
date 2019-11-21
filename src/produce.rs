@@ -9,13 +9,13 @@ pub struct Producer {
 }
 
 impl Producer {
-    pub async fn new(uri: &str, queue: &'static str) -> Result<Producer> {
+    pub async fn new(uri: &str, queue: &'static str) -> Result<Self> {
         let c = Connection::connect(uri, ConnectionProperties::default()).await?;
         let channel = c.create_channel().await?;
         channel
             .queue_declare(queue, QueueDeclareOptions::default(), FieldTable::default())
             .await?;
-        Ok(Producer { channel, queue })
+        Ok(Self { channel, queue })
     }
     pub async fn publish(&mut self, msg: Vec<u8>) -> Result<()> {
         self.channel
