@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 use futures_executor::LocalPool;
 use futures_util::{future::FutureExt, stream::StreamExt, task::LocalSpawnExt};
-use lapin::{options::*, BasicProperties, Result};
+use lapin::{options::*, Result};
 use rustmq::{Consumer, Producer};
 use std::env;
 
@@ -38,19 +38,10 @@ fn main() -> Result<()> {
             });
         }
         // Producer.
-        let producer = Producer::new(&uri, "hello").await?;
+        let mut producer = Producer::new(&uri, "hello").await?;
         let payload = b"Hello world!";
         loop {
-            producer
-                .channel
-                .basic_publish(
-                    "",
-                    "hello",
-                    BasicPublishOptions::default(),
-                    payload.to_vec(),
-                    BasicProperties::default(),
-                )
-                .await?;
+            producer.publish(payload.to_vec()).await?;
         }
     })
 }
