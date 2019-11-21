@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0
-.PHONY: check test clean run install doc fmt lint
+.PHONY: check test clean run install doc doc-crate fmt lint
 all: fmt lint test
 check:
 	@cargo check
@@ -11,7 +11,8 @@ run:
 	@cargo run
 install:
 	@cargo install --force --path .
-doc: doc-book doc-std
+doc: doc-crate doc-book doc-std
+doc-crate:
 	@cargo doc --all --open &
 doc-%:
 	@rustup doc --$* &
