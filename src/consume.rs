@@ -3,7 +3,7 @@ use lapin::{options::*, types::FieldTable};
 use lapin::{Connection, ConnectionProperties, Result};
 
 pub struct Consumer {
-    pub c: Connection,
+    c: Connection,
 }
 
 impl Consumer {
@@ -11,7 +11,7 @@ impl Consumer {
         let c = Connection::connect(uri, ConnectionProperties::default()).await?;
         Ok(Consumer { c })
     }
-    pub async fn consume(&mut self, queue: &str) -> Result<(lapin::Consumer, lapin::Channel)> {
+    pub async fn worker(&mut self, queue: &str) -> Result<(lapin::Consumer, lapin::Channel)> {
         let c = match self.c.create_channel().await {
             Ok(c) => c,
             Err(err) => return Err(err),

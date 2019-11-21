@@ -2,7 +2,7 @@
 use futures_executor::LocalPool;
 use futures_util::{future::FutureExt, stream::StreamExt, task::LocalSpawnExt};
 use lapin::{options::*, types::FieldTable, BasicProperties, Result};
-use rustmq::Consumer;
+use rustmq::{Consumer, Producer};
 use std::env;
 
 fn parse() -> String {
@@ -20,31 +20,33 @@ fn main() -> Result<()> {
 
     exec.run_until(async {
         let uri = parse();
-        let mut client = Consumer::new(&uri).await?;
+        let mut consumer = Consumer::new(&uri).await?;
         // Consumers.
         for i in { b'a'..b'z' } {
-            let (consumer, c) = client.consume("hello").await?;
+            let (worker, channel) = consumer.worker("hello").await?;
             let x: char = i.into();
-            let _consumer = spawner.spawn_local(async move {
-                consumer
+            let _task = spawner.spawn_local(async move {
+                worker
                     .for_each(move |delivery| {
                         eprint!("{}", x);
                         let delivery = delivery.expect("error caught in consumer");
-                        c.basic_ack(delivery.delivery_tag, BasicAckOptions::default())
+                        channel
+                            .basic_ack(delivery.delivery_tag, BasicAckOptions::default())
                             .map(|_| ())
                     })
                     .await
             });
         }
         // Producer.
-        let payload = b"Hello world!";
-        let p = client.c.create_channel().await?;
+        let producer = Producer::new(&uri).await?;
+        let p = producer.c.create_channel().await?;
         p.queue_declare(
             "hello",
             QueueDeclareOptions::default(),
             FieldTable::default(),
         )
         .await?;
+        let payload = b"Hello world!";
         loop {
             p.basic_publish(
                 "",
