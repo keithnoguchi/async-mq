@@ -1,3 +1,3 @@
 // SPDX-License-Identifier: GPL-2.0
-mod client;
-pub use client::Client;
+mod consume;
+pub use consume::Consumer;

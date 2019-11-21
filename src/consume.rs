@@ -1,28 +1,41 @@
 // SPDX-License-Identifier: GPL-2.0
-use lapin::message::DeliveryResult;
-use lapin::options::BasicAckOptions;
-use lapin::{Channel, ConsumerDelegate};
+use lapin::{options::*, types::FieldTable};
+use lapin::{Connection, ConnectionProperties, Result};
 
-#[derive(Clone, Debug)]
 pub struct Consumer {
-    name: char,
-    chan: Channel,
+    pub c: Connection,
 }
 
 impl Consumer {
-    pub fn new(name: char, chan: Channel) -> Self {
-        Self { name, chan }
+    pub async fn new(uri: &str) -> Result<Consumer> {
+        let c = Connection::connect(uri, ConnectionProperties::default()).await?;
+        Ok(Consumer { c })
     }
-}
-
-impl ConsumerDelegate for Consumer {
-    fn on_new_delivery(&self, delivery: DeliveryResult) {
-        if let Some(delivery) = delivery.unwrap() {
-            print!("{}", self.name);
-            self.chan
-                .basic_ack(delivery.delivery_tag, BasicAckOptions::default())
-                .wait()
-                .expect("basic_ack")
-        }
+    pub async fn consume(&mut self, queue: &str) -> Result<(lapin::Consumer, lapin::Channel)> {
+        let c = match self.c.create_channel().await {
+            Ok(c) => c,
+            Err(err) => return Err(err),
+        };
+        let q = match c
+            .queue_declare(queue, QueueDeclareOptions::default(), FieldTable::default())
+            .await
+        {
+            Ok(q) => q,
+            Err(err) => return Err(err),
+        };
+        let consumer = match c
+            .clone()
+            .basic_consume(
+                &q,
+                "my_consumer",
+                BasicConsumeOptions::default(),
+                FieldTable::default(),
+            )
+            .await
+        {
+            Ok(c) => c,
+            Err(err) => return Err(err),
+        };
+        Ok((consumer, c))
     }
 }

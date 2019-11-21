@@ -2,7 +2,7 @@
 use futures_executor::LocalPool;
 use futures_util::{future::FutureExt, stream::StreamExt, task::LocalSpawnExt};
 use lapin::{options::*, types::FieldTable, BasicProperties, Result};
-use rustmq::Client;
+use rustmq::Consumer;
 use std::env;
 
 fn parse() -> String {
@@ -20,26 +20,10 @@ fn main() -> Result<()> {
 
     exec.run_until(async {
         let uri = parse();
-        let client = Client::connect(&uri).await?;
+        let mut client = Consumer::new(&uri).await?;
         // Consumers.
         for i in { b'a'..b'z' } {
-            let c = client.create_channel().await?;
-            let queue = c
-                .queue_declare(
-                    "hello",
-                    QueueDeclareOptions::default(),
-                    FieldTable::default(),
-                )
-                .await?;
-            let consumer = c
-                .clone()
-                .basic_consume(
-                    &queue,
-                    "my_consumer",
-                    BasicConsumeOptions::default(),
-                    FieldTable::default(),
-                )
-                .await?;
+            let (consumer, c) = client.consume("hello").await?;
             let x: char = i.into();
             let _consumer = spawner.spawn_local(async move {
                 consumer
@@ -54,7 +38,7 @@ fn main() -> Result<()> {
         }
         // Producer.
         let payload = b"Hello world!";
-        let p = client.create_channel().await?;
+        let p = client.c.create_channel().await?;
         p.queue_declare(
             "hello",
             QueueDeclareOptions::default(),
