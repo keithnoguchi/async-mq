@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0
 use futures_executor::LocalPool;
 use futures_util::{future::FutureExt, stream::StreamExt, task::LocalSpawnExt};
-use lapin::options::*;
-use lapin::types::FieldTable;
-use lapin::{BasicProperties, ConnectionProperties, Result};
-use rustmq::Connection;
+use lapin::{options::*, types::FieldTable, BasicProperties, Result};
+use rustmq::Client;
 use std::env;
 
 fn parse() -> String {
@@ -21,12 +19,11 @@ fn main() -> Result<()> {
     let spawner = exec.spawner();
 
     exec.run_until(async {
-        let addr = parse();
-        let con = Connection::connect(&addr, ConnectionProperties::default()).await?;
-
+        let uri = parse();
+        let client = Client::connect(&uri).await?;
         // Consumers.
         for i in { b'a'..b'z' } {
-            let c = con.create_channel().await?;
+            let c = client.create_channel().await?;
             let queue = c
                 .queue_declare(
                     "hello",
@@ -57,7 +54,7 @@ fn main() -> Result<()> {
         }
         // Producer.
         let payload = b"Hello world!";
-        let p = con.create_channel().await?;
+        let p = client.create_channel().await?;
         p.queue_declare(
             "hello",
             QueueDeclareOptions::default(),
