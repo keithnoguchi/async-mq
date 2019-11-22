@@ -1,23 +1,24 @@
 // SPDX-License-Identifier: GPL-2.0
-use futures_executor::{LocalPool, LocalSpawner};
+use futures_executor::{block_on, LocalPool, LocalSpawner};
 use futures_util::{future::FutureExt, stream::StreamExt, task::LocalSpawnExt};
 use lapin::{options::*, Result};
 use rustmq::Client;
 use std::{env, thread};
 
 fn main() -> thread::Result<()> {
-    let p = thread::spawn(|| {
+    // Using a single client connection to the rabbit broker.
+    let client1 = client(parse());
+    let client2 = client1.clone();
+    let p = thread::spawn(move || {
         let queue_name = "hello";
-        let uri = parse();
-        producer(uri, &queue_name).expect("cannot start producer");
+        producer(client1, &queue_name).expect("cannot start producer");
     });
-    let c = thread::spawn(|| {
+    let c = thread::spawn(move || {
         let queue_name = "hello";
-        let uri = parse();
         let mut pool = LocalPool::new();
         let spawner = pool.spawner();
         spawner
-            .spawn_local(consumers(uri.clone(), &queue_name, spawner.clone()))
+            .spawn_local(consumers(client2.clone(), &queue_name, spawner.clone()))
             .expect("cannot spawn consumers");
         pool.run()
     });
@@ -25,11 +26,15 @@ fn main() -> thread::Result<()> {
     c.join()
 }
 
-fn producer(uri: String, queue_name: &'static str) -> Result<()> {
+fn client(uri: String) -> Client {
+    let client = Client::new(&uri);
+    block_on(client).unwrap()
+}
+
+fn producer(mut c: Client, queue_name: &'static str) -> Result<()> {
     let mut pool = LocalPool::new();
     let payload = b"Hello world!";
     pool.run_until(async move {
-        let mut c = Client::new(&uri).await?;
         let mut producer = c.producer(queue_name).await?;
         loop {
             producer.publish(payload.to_vec()).await?;
@@ -37,8 +42,7 @@ fn producer(uri: String, queue_name: &'static str) -> Result<()> {
     })
 }
 
-async fn consumers(uri: String, queue_name: &'static str, spawner: LocalSpawner) {
-    let mut c = Client::new(&uri).await.expect("cannot create client");
+async fn consumers(mut c: Client, queue_name: &'static str, spawner: LocalSpawner) {
     let mut consumer = c.consumer().await.expect("cannot create consumer");
     for i in { b'a'..b'z' } {
         let (worker, channel) = consumer
