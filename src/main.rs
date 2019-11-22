@@ -2,18 +2,22 @@
 use futures_executor::{LocalPool, LocalSpawner};
 use futures_util::{future::FutureExt, stream::StreamExt, task::LocalSpawnExt};
 use lapin::{options::*, Result};
-use rustmq::{Consumer, Producer};
+use rustmq::Client;
 use std::{env, thread};
 
 fn main() -> thread::Result<()> {
     let p = thread::spawn(|| {
-        producer().expect("cannot start producer");
+        let queue_name = "hello";
+        let uri = parse();
+        producer(uri, &queue_name).expect("cannot start producer");
     });
     let c = thread::spawn(|| {
+        let queue_name = "hello";
+        let uri = parse();
         let mut pool = LocalPool::new();
         let spawner = pool.spawner();
         spawner
-            .spawn_local(consumers(spawner.clone()))
+            .spawn_local(consumers(uri.clone(), &queue_name, spawner.clone()))
             .expect("cannot spawn consumers");
         pool.run()
     });
@@ -21,23 +25,21 @@ fn main() -> thread::Result<()> {
     c.join()
 }
 
-fn producer() -> Result<()> {
-    let payload = b"Hello world!";
-    let queue_name = "hello";
-    let uri = parse();
+fn producer(uri: String, queue_name: &'static str) -> Result<()> {
     let mut pool = LocalPool::new();
+    let payload = b"Hello world!";
     pool.run_until(async move {
-        let mut producer = Producer::new(&uri, queue_name).await?;
+        let mut c = Client::new(&uri).await?;
+        let mut producer = c.producer(queue_name).await?;
         loop {
             producer.publish(payload.to_vec()).await?;
         }
     })
 }
 
-async fn consumers(spawner: LocalSpawner) {
-    let queue_name = "hello";
-    let uri = parse();
-    let mut consumer = Consumer::new(&uri).await.expect("cannot create consumer");
+async fn consumers(uri: String, queue_name: &'static str, spawner: LocalSpawner) {
+    let mut c = Client::new(&uri).await.expect("cannot create client");
+    let mut consumer = c.consumer().await.expect("cannot create consumer");
     for i in { b'a'..b'z' } {
         let (worker, channel) = consumer
             .worker(queue_name)

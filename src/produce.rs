@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0
+use crate::Client;
 use lapin::options::{BasicPublishOptions, QueueDeclareOptions};
 use lapin::types::FieldTable;
-use lapin::{BasicProperties, Channel, Connection, ConnectionProperties, Result};
+use lapin::{BasicProperties, Channel, Result};
 
 pub struct Producer {
     queue: &'static str,
@@ -9,9 +10,8 @@ pub struct Producer {
 }
 
 impl Producer {
-    pub async fn new(uri: &str, queue: &'static str) -> Result<Self> {
-        let c = Connection::connect(uri, ConnectionProperties::default()).await?;
-        let channel = c.create_channel().await?;
+    pub async fn new(c: Client, queue: &'static str) -> Result<Self> {
+        let channel = c.c.create_channel().await?;
         channel
             .queue_declare(queue, QueueDeclareOptions::default(), FieldTable::default())
             .await?;
