@@ -18,7 +18,7 @@ fn main() -> thread::Result<()> {
         let mut pool = LocalPool::new();
         let spawner = pool.spawner();
         spawner
-            .spawn_local(consumers(client2.clone(), &queue_name, spawner.clone()))
+            .spawn_local(consumers(client2, &queue_name, spawner.clone()))
             .expect("cannot spawn consumers");
         pool.run()
     });
