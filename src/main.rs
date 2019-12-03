@@ -2,7 +2,7 @@
 use futures_executor::{block_on, LocalPool, LocalSpawner};
 use futures_util::{future::FutureExt, stream::StreamExt, task::LocalSpawnExt};
 use lapin::{options::*, Result};
-use mq::Client;
+use rustmq::Client;
 use std::{env, thread};
 
 fn main() -> thread::Result<()> {

@@ -1,6 +1,14 @@
-# SPDX-License-Identifier: GPL-2.0
-[workspace]
+[package]
+name = "rustmq"
+version = "0.3.0"
+authors = ["Keith Noguchi <keith.noguchi@gmail.com>"]
+edition = "2018"
 
-members = [
-   "mq",
-]
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+futures = "^0.3"
+futures-executor = "^0.3"
+futures-util = "^0.3"
+flatbuffers = "^0.6"
+lapin = { version = "^0.28", features = ["futures"] }
