@@ -1,9 +1,11 @@
 # SPDX-License-Identifier: GPL-2.0
-.PHONY: check test clean run install doc doc-crate fmt lint
+.PHONY: check build test clean run install doc doc-crate fmt lint
 all: fmt lint test
 check:
 	@cargo check
-test:
+build:
+	@cd flatbuffers && flatc --rust monster.fbs
+test: build
 	@cargo test
 clean:
 	@cargo clean
