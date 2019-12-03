@@ -5,4 +5,5 @@ pub use produce::Producer;
 
 mod client;
 mod consume;
+mod gen;
 mod produce;

@@ -5,7 +5,7 @@ steps:
   - name: format
     image: rust:1.39
     commands:
-      - apt-get update && apt-get install snapd
+      - apt-get update && apt-get install -y snapd
       - snap install core
       - snap install flatbuffers --edge
       - rustup component add rustfmt
@@ -13,7 +13,7 @@ steps:
   - name: lint
     image: rust:1.39
     commands:
-      - apt-get update && apt-get install snapd
+      - apt-get update && apt-get install -y snapd
       - snap install core
       - snap install flatbuffers --edge
       - rustup component add clippy
@@ -21,7 +21,7 @@ steps:
   - name: test
     image: rust:1.39
     commands:
-      - apt-get update && apt-get install snapd
+      - apt-get update && apt-get install -y snapd
       - snap install core
       - snap install flatbuffers --edge
       - make test
@@ -31,7 +31,7 @@ steps:
   - name: document
     image: rust:1.39
     commands:
-      - apt-get update && apt-get install snapd
+      - apt-get update && apt-get install -y snapd
       - snap install core
       - snap install flatbuffers --edge
       - make doc
@@ -41,7 +41,7 @@ steps:
   - name: install
     image: rust:1.39
     commands:
-      - apt-get update && apt-get install snapd
+      - apt-get update && apt-get install -y snapd
       - snap install core
       - snap install flatbuffers --edge
       - make install
