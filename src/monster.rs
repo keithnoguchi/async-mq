@@ -31,7 +31,7 @@ mod tests {
         }
     }
     #[test]
-    fn create_sword_and_axe() {
+    fn serialize_sword_and_axe() {
         let mut b = flatbuffers::FlatBufferBuilder::new();
         let name = b.create_string("Sword");
         let _sword = Weapon::create(
@@ -51,7 +51,7 @@ mod tests {
         );
     }
     #[test]
-    fn create_weapons() {
+    fn serialize_weapons() {
         let mut b = flatbuffers::FlatBufferBuilder::new_with_capacity(1);
         let name = b.create_string("Sword");
         let sword = Weapon::create(
