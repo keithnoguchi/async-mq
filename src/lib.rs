@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 pub use client::Client;
 pub use consume::Consumer;
-pub use gen::my_game::sample::*;
 pub use produce::Producer;
 
 mod client;
@@ -19,3 +18,7 @@ pub mod gen {
     )]
     include!("../flatbuf/monster_generated.rs");
 }
+
+pub use gen::my_game::sample::{
+    get_root_as_monster, Color, Equipment, Monster, MonsterArgs, Vec3, Weapon, WeaponArgs,
+};
