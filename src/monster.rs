@@ -123,5 +123,6 @@ mod tests {
             },
         );
         println!("monster: {:?}", orc);
+        b.finish(orc, None);
     }
 }
