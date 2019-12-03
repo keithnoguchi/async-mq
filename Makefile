@@ -1,14 +1,15 @@
 # SPDX-License-Identifier: GPL-2.0
-.PHONY: check build test clean run install doc doc-crate fmt lint
+.PHONY: gen check test clean run install doc doc-crate fmt lint
 all: fmt lint test
+gen:
+	@cd flatbuff/src && flatc --rust *.fbs && rustfmt --edition 2018 *.rs
 check:
 	@cargo check
-build:
-	@cd flatbuffers && flatc --rust monster.fbs
-test: build
+test:
 	@cargo test
 clean:
 	@cargo clean
+	@rm flatbuff/src/*.rs
 run:
 	@cargo run
 install:
@@ -19,9 +20,9 @@ doc-crate:
 doc-%:
 	@rustup doc --$* &
 fmt:
-	@rustfmt --edition 2018 --check src/*.rs
+	@rustfmt --edition 2018 --check mq/src/*.rs
 lint:
-	@cargo clippy -- -D warnings
+	@cd mq && cargo clippy -- -D warnings
 # CI targets.
 .PHONY: arch64 ubuntu64
 arch64: arch64-image
