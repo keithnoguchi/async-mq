@@ -10,9 +10,14 @@
 
 ## Modules
 
-- [consume]: for Struct Consumer
+- [client]: For struct Client
+- [consume]: For struct Consumer
+- [publish]: For Struct Publisher
 
-[consume]: src/consume.rs
+[client]: mq/src/client.rs
+[consume]: mq/src/consume.rs
+[publish]: mq/src/publish.rs
+[main.rs]: mq/src/main.rs
 
 ## Execution
 
@@ -37,8 +42,6 @@ xyvwcabdmejghilknfopqryabdestuvwxfhcmqjrklignopycstuvwxabfdhkeomlgqrijpnsutvwxay
 tuvwyxabcdefghijklmnopqsrtuvwxyabcdefghijklmnopqrstuvwxyabcdefghijkmlonpqrstvuxacywheibdfgjklmnopqrvsuwtxabycdefghijklmnoqprstvuwyxabcdefgihkjnlmpoqrstuvwyxabcdefghijklmnpoqrsutvwxyabcedfghjilnkmopqrestuvxfgwabcdhiykmjlqnoprstwyabucvxdeghfijklmnopqrstyuwxveabcdfghijklmnopqrstuvwxyabcdefghijlmopkqnsrtuvwxyabcedfghijklmnopqrstuvwxaybcdefghijklmnopqrstuvwxyabcdegfhijklnupwsybcxamoqrvdetmfghijklnpoqsrutwxyabcvdefghijlkmonpqrtsuvwxadcybefghijklnmopqrstuvwxyabcdefjghilknmpqorstwuxvydabcefghijknolmpqrsxtwvycafbuedghijklmnopqrutsvwxyabcdefghijklmopnqrtusvyxawbcdefghijklmnopqrstuvwyxbacedfghijklmnopqrstuvwxyacebdfghimnopjqklrstuvwxyabcfhdeijklgmnpqosurwxtvyabcdfeghjklmnoqpsrvtxubwyacdegfhjklmnopqrstuvwxaybcdfeghjklmnopqrsutvwxyaiiibcdefghijklmnopqbswuxvacdertyihfgjklmnopqrstuwvxybacdefghijklmnopqrstuvwxyabcdefhgijkmlnopqrstuvwxyabcdefghijklmnopqrstvuwxyabcdefghijklmnopqrstuvwxyacegbmdnhpfrijkloqsutwvbcdeaxfygihjklmnopqrstuvwxyabcdefghilkjmonqprstuvwyxabcdefhgijklmnopqrsutvwyxbacedfigkjhlmnpoqrstuvwxyabcdefghijklmoqputxrnvyaswbdfceghjiklmnoprqstuvwxabydecfghijkl
 ^C
 ```
-
-[main.rs]: src/main.rs
 
 ## References
 
