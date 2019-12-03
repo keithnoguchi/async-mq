@@ -3,6 +3,7 @@ pub use client::Client;
 pub use consume::Consumer;
 pub use produce::Producer;
 
+mod buf;
 mod client;
 mod consume;
 mod produce;
