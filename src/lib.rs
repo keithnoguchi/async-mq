@@ -5,5 +5,5 @@ pub use produce::Producer;
 
 mod client;
 mod consume;
-mod monster;
+mod message;
 mod produce;

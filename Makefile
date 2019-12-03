@@ -2,7 +2,7 @@
 .PHONY: build check test clean run install doc doc-crate fmt lint
 all: fmt lint test
 build:
-	@cd flatbuf && flatc --rust *.fbs
+	@cd schema && flatc --rust *.fbs
 check: build
 	@cargo check
 test: build

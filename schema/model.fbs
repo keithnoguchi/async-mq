@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0
+namespace Model;
+
+table Message {
+  name:string;
+}
+
+root_type Message;
