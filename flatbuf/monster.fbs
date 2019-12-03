@@ -21,7 +21,7 @@ table Monster {
   friedly:bool = false (deprecated);
   inventory:[ubyte];  // Vector of scalars.
   color:Color = Blue; // Enum.
-  weapon:[Weapon];    // Vector of tables.
+  weapons:[Weapon];   // Vector of tables.
   equipped:Equipment; // Union.
   path:[Vec3];        // Vector of structs.
 }
