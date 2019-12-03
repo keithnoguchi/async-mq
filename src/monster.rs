@@ -24,22 +24,51 @@ pub mod gen {
 mod tests {
     use super::*;
     #[test]
-    fn flat_buffer_builder() {
+    fn builder_with_different_capacities() {
         let capacities = [1usize, 16, 32, 64, 128, 256, 1024, 2048, 4096];
         for &t in &capacities {
             let _builder = flatbuffers::FlatBufferBuilder::new_with_capacity(t);
         }
     }
     #[test]
-    fn weapon_create() {
-        let mut builder = flatbuffers::FlatBufferBuilder::new();
-        let name1 = builder.create_string("Sword");
+    fn create_sword_and_axe() {
+        let mut b = flatbuffers::FlatBufferBuilder::new();
+        let name = b.create_string("Sword");
         let _sword = Weapon::create(
-            &mut builder,
+            &mut b,
             &WeaponArgs {
-                name: Some(name1),
+                name: Some(name),
                 damage: 3,
             },
         );
+        let name = b.create_string("Axe");
+        let _axe = Weapon::create(
+            &mut b,
+            &WeaponArgs {
+                name: Some(name),
+                damage: 5,
+            },
+        );
+    }
+    #[test]
+    fn create_weapons() {
+        let mut b = flatbuffers::FlatBufferBuilder::new_with_capacity(1);
+        let name = b.create_string("Sword");
+        let sword = Weapon::create(
+            &mut b,
+            &WeaponArgs {
+                name: Some(name),
+                damage: 3,
+            },
+        );
+        let name = b.create_string("Axe");
+        let axe = Weapon::create(
+            &mut b,
+            &WeaponArgs {
+                name: Some(name),
+                damage: 5,
+            },
+        );
+        let _weapons = b.create_vector(&[sword, axe]);
     }
 }
