@@ -1,8 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0
 namespace Model;
 
+enum MessageType : byte { Hello = 1, Goodbye }
+
 table Message {
-  name:string;
+  id:ulong;
+  msg_type:MessageType = Hello;
+  msg:string;
 }
 
 root_type Message;

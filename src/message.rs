@@ -9,7 +9,7 @@
 include!("../schema/model_generated.rs");
 
 pub use model::get_root_as_message;
-pub use model::{Message, MessageArgs, MessageBuilder};
+pub use model::{Message, MessageArgs, MessageBuilder, MessageType};
 
 #[cfg(test)]
 mod tests {
@@ -17,24 +17,25 @@ mod tests {
     #[test]
     fn message_create() {
         use super::get_root_as_message;
-        use super::{Message, MessageArgs};
-        let names = ["a", "b", "c", "d"];
-        for name in &names {
+        use super::{Message, MessageArgs, MessageType};
+        let msgs = ["a", "b", "c", "d"];
+        for msg in &msgs {
             let mut b = FlatBufferBuilder::new();
-            let msg_name = b.create_string(name);
-            let msg = Message::create(
+            let bmsg = b.create_string(msg);
+            let data = Message::create(
                 &mut b,
                 &MessageArgs {
-                    name: Some(msg_name),
+                    msg: Some(bmsg),
+                    ..Default::default()
                 },
             );
-            b.finish(msg, None);
+            b.finish(data, None);
             let buf = b.finished_data();
             let got = get_root_as_message(buf);
-            match got.name() {
-                Some(got) => assert_eq!(name, &got),
-                _ => panic!("unexpected None"),
-            }
+            assert_eq!(msg, &got.msg().unwrap());
+            assert_eq!(0, got.id());
+            assert_eq!(MessageType::Hello, got.msg_type());
+            println!("mesg = {:?}", got);
         }
     }
 }
