@@ -38,4 +38,23 @@ mod tests {
             println!("mesg = {:?}", got);
         }
     }
+    #[test]
+    fn message_builder() {
+        use super::get_root_as_message;
+        use super::MessageType;
+        let mut b = FlatBufferBuilder::new();
+        let bmsg = b.create_string("a");
+        let mut mb = super::MessageBuilder::new(&mut b);
+        mb.add_id(1000);
+        mb.add_msg(bmsg);
+        mb.add_msg_type(super::MessageType::Goodbye);
+        let data = mb.finish();
+        b.finish(data, None);
+        let buf = b.finished_data();
+        let got = get_root_as_message(buf);
+        assert_eq!("a", got.msg().unwrap());
+        assert_eq!(1000, got.id());
+        assert_eq!(MessageType::Goodbye, got.msg_type());
+        println!("msg = {:?}", got);
+    }
 }
