@@ -35,9 +35,8 @@ fn client(uri: String) -> Client {
 fn producer(c: Client, queue_name: String) -> Result<()> {
     let mut pool = LocalPool::new();
     pool.run_until(async move {
-        let mut p = Producer::new(c, queue_name);
-        p.declare().await?;
         let mut builder = FlatBufferBuilder::new();
+        let mut p = Producer::new(c, queue_name);
         loop {
             for data in { b'a'..b'z' } {
                 let data = builder.create_string(&String::from_utf8(vec![data]).unwrap());

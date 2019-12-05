@@ -42,17 +42,23 @@ impl Producer {
         Ok(())
     }
     pub async fn publish(&mut self, msg: Vec<u8>) -> Result<()> {
-        self.channel
-            .as_ref()
-            .unwrap()
-            .basic_publish(
-                &self.exchange,
-                &self.queue,
-                self.publish_options.clone(),
-                msg,
-                self.properties.clone(),
-            )
-            .await
+        let ch = match &self.channel {
+            Some(ch) => ch,
+            None => {
+                if let Err(err) = self.declare().await {
+                    return Err(err);
+                }
+                self.channel.as_ref().unwrap()
+            }
+        };
+        ch.basic_publish(
+            &self.exchange,
+            &self.queue,
+            self.publish_options.clone(),
+            msg,
+            self.properties.clone(),
+        )
+        .await
     }
 }
 
