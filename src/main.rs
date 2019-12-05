@@ -28,15 +28,24 @@ fn main() -> thread::Result<()> {
     }
 
     // Producer.
-    let p = thread::spawn(move || {
-        producer(client, String::from(queue_name)).expect("cannot start producer");
-    });
+    let mut producers = Vec::with_capacity(2);
+    for _ in 0..producers.capacity() {
+        let client = client.clone();
+        let p = thread::spawn(move || {
+            producer(client, String::from(queue_name)).expect("cannot start producer");
+        });
+        producers.push(p);
+    }
 
     while !consumers.is_empty() {
         let c = consumers.pop().unwrap();
         c.join()?;
     }
-    p.join()
+    while !producers.is_empty() {
+        let p = producers.pop().unwrap();
+        p.join()?;
+    }
+    Ok(())
 }
 
 fn producer(c: Client, queue_name: String) -> Result<()> {
