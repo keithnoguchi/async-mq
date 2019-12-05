@@ -3,14 +3,12 @@ use crate::Consumer;
 use lapin::{Connection, ConnectionProperties, Result};
 
 #[derive(Clone)]
-pub struct Client {
-    pub c: Connection,
-}
+pub struct Client(pub Connection);
 
 impl Client {
     pub async fn new(uri: &str) -> Result<Self> {
         let c = Connection::connect(uri, ConnectionProperties::default()).await?;
-        Ok(Self { c })
+        Ok(Self(c))
     }
     pub async fn consumer(&mut self) -> Result<Consumer> {
         Consumer::new(self.clone()).await

@@ -43,11 +43,11 @@ impl Producer {
         .await
     }
     async fn create_channel(&mut self) -> Result<()> {
-        let c = match self.client.as_ref().unwrap().c.create_channel().await {
+        let ch = match self.client.as_ref().unwrap().0.create_channel().await {
             Ok(channel) => channel,
             Err(err) => return Err(err),
         };
-        if let Err(err) = c
+        if let Err(err) = ch
             .queue_declare(
                 &self.queue,
                 self.queue_options.clone(),
@@ -57,7 +57,7 @@ impl Producer {
         {
             return Err(err);
         }
-        self.channel = Some(c);
+        self.channel = Some(ch);
         Ok(())
     }
 }

@@ -9,7 +9,7 @@ pub struct Consumer {
 
 impl Consumer {
     pub async fn new(c: Client) -> Result<Self> {
-        Ok(Self { c: c.c })
+        Ok(Self { c: c.0 })
     }
     pub async fn worker(&mut self, queue: &str) -> Result<(lapin::Consumer, lapin::Channel)> {
         let c = match self.c.create_channel().await {
