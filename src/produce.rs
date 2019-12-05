@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
-use crate::Client;
-use lapin::options::{BasicPublishOptions, QueueDeclareOptions};
+use crate::{msg, Client};
+use futures_util::stream::StreamExt;
+use lapin::options::{BasicConsumeOptions, BasicPublishOptions, QueueDeclareOptions};
 use lapin::types::FieldTable;
 use lapin::{BasicProperties, Channel, Result};
 use std::default::Default;
@@ -39,8 +40,14 @@ impl Producer {
             auto_delete: true,
             ..self.queue_options.clone()
         };
-        let q = match ch.queue_declare("", opts, self.field_table.clone()).await {
-            Ok(q) => q,
+        let (reply_ch, q) = match self
+            .client
+            .as_ref()
+            .unwrap()
+            .channel_and_queue("", opts, self.field_table.clone())
+            .await
+        {
+            Ok((ch, q)) => (ch, q),
             Err(err) => return Err(err),
         };
         ch.basic_publish(
@@ -50,7 +57,29 @@ impl Producer {
             msg,
             self.properties.clone().with_reply_to(q.name().clone()),
         )
-        .await
+        .await?;
+        let mut consumer = match reply_ch
+            .basic_consume(
+                &q,
+                "producer",
+                BasicConsumeOptions::default(),
+                FieldTable::default(),
+            )
+            .await
+        {
+            Ok(c) => c,
+            Err(err) => return Err(err),
+        };
+        if let Some(delivery) = consumer.next().await {
+            match delivery {
+                Ok(delivery) => {
+                    let msg = msg::get_root_as_message(&delivery.data);
+                    eprint!("{}", msg.msg().unwrap());
+                }
+                Err(err) => return Err(err),
+            }
+        }
+        Ok(())
     }
     pub async fn publish(&mut self, msg: Vec<u8>) -> Result<()> {
         let ch = match &self.channel {

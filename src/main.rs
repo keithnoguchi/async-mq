@@ -7,12 +7,11 @@ use rustmq::{Client, ConsumerBuilder, Producer};
 use std::{env, thread};
 
 fn main() -> thread::Result<()> {
-    // Connection to the rabbitmq broker.
-    let mut client = Client::new(parse());
-    block_on(client.connect()).unwrap();
     let queue_name = "hello";
 
-    // Consumers.
+    // Consumers sharing the single TCP connection to the broker.
+    let mut client = Client::new(parse());
+    block_on(client.connect()).unwrap();
     let mut consumers = Vec::with_capacity(4);
     for _ in 0..consumers.capacity() {
         let builder = ConsumerBuilder::new(client.clone());
@@ -27,7 +26,9 @@ fn main() -> thread::Result<()> {
         consumers.push(c);
     }
 
-    // Producer.
+    // Producer sharing the single TCP connection to the broker.
+    let mut client = Client::new(parse());
+    block_on(client.connect()).unwrap();
     let mut producers = Vec::with_capacity(2);
     for _ in 0..producers.capacity() {
         let client = client.clone();

@@ -43,7 +43,7 @@ impl Consumer {
                 BasicProperties::default(),
             )
             .await?;
-        print!("{}", queue);
+        //print!("{}", queue);
         Ok(())
     }
 }
