@@ -7,24 +7,36 @@ use rustmq::{Client, ConsumerBuilder, Producer};
 use std::{env, thread};
 
 fn main() -> thread::Result<()> {
-    // Using a single client connection to the rabbit broker.
+    // Connection to the rabbitmq broker.
     let mut client = Client::new(parse());
     block_on(client.connect()).unwrap();
-    let builder = ConsumerBuilder::new(client.clone());
     let queue_name = "hello";
+
+    // Consumers.
+    let mut consumers = Vec::with_capacity(4);
+    for _ in 0..consumers.capacity() {
+        let builder = ConsumerBuilder::new(client.clone());
+        let c = thread::spawn(move || {
+            let mut pool = LocalPool::new();
+            let spawner = pool.spawner();
+            spawner
+                .spawn_local(consumer(builder, &queue_name, spawner.clone()))
+                .expect("cannot spawn consumers");
+            pool.run()
+        });
+        consumers.push(c);
+    }
+
+    // Producer.
     let p = thread::spawn(move || {
         producer(client, String::from(queue_name)).expect("cannot start producer");
     });
-    let c = thread::spawn(move || {
-        let mut pool = LocalPool::new();
-        let spawner = pool.spawner();
-        spawner
-            .spawn_local(consumers(builder, &queue_name, spawner.clone()))
-            .expect("cannot spawn consumers");
-        pool.run()
-    });
-    p.join().expect("cannot join producer");
-    c.join()
+
+    while !consumers.is_empty() {
+        let c = consumers.pop().unwrap();
+        c.join()?;
+    }
+    p.join()
 }
 
 fn producer(c: Client, queue_name: String) -> Result<()> {
@@ -47,9 +59,8 @@ fn producer(c: Client, queue_name: String) -> Result<()> {
     })
 }
 
-async fn consumers(mut builder: ConsumerBuilder, queue_name: &'static str, spawner: LocalSpawner) {
-    // Four consumers.
-    for _ in 0usize..8 {
+async fn consumer(mut builder: ConsumerBuilder, queue_name: &'static str, spawner: LocalSpawner) {
+    for _ in 0usize..4 {
         let mut consumer = builder
             .consumer(queue_name)
             .await
