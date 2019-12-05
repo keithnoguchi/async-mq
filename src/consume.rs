@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0
 use crate::{msg, Client};
 use futures_util::stream::StreamExt;
-use lapin::options::{BasicAckOptions, BasicConsumeOptions, QueueDeclareOptions};
+use lapin::options::{
+    BasicAckOptions, BasicConsumeOptions, BasicPublishOptions, QueueDeclareOptions,
+};
 use lapin::types::FieldTable;
-use lapin::{Channel, Result};
+use lapin::{BasicProperties, Channel, Result};
 use std::default::Default;
 
 pub struct Consumer {
@@ -15,10 +17,10 @@ impl Consumer {
     pub async fn run(&mut self) -> Result<()> {
         while let Some(delivery) = &self.consumer.next().await {
             let delivery = delivery.as_ref().unwrap();
-            let msg = msg::get_root_as_message(&delivery.data);
             if let Some(reply_to) = delivery.properties.reply_to() {
-                self.publish(reply_to.as_str()).await?;
+                self.publish(reply_to.as_str(), &delivery.data).await?;
             } else {
+                let msg = msg::get_root_as_message(&delivery.data);
                 print!("{}", msg.msg().unwrap());
             }
             if let Err(err) = self
@@ -31,7 +33,16 @@ impl Consumer {
         }
         Ok(())
     }
-    pub async fn publish(&mut self, queue: &str) -> Result<()> {
+    async fn publish(&mut self, queue: &str, msg: &[u8]) -> Result<()> {
+        self.channel
+            .basic_publish(
+                "",
+                queue,
+                BasicPublishOptions::default(),
+                msg.to_vec(),
+                BasicProperties::default(),
+            )
+            .await?;
         print!("{}", queue);
         Ok(())
     }
