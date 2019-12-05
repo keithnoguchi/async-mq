@@ -44,7 +44,7 @@ impl Producer {
     }
     async fn create_channel(&mut self) -> Result<()> {
         let ch = match self.client.as_ref().unwrap().0.create_channel().await {
-            Ok(channel) => channel,
+            Ok(ch) => ch,
             Err(err) => return Err(err),
         };
         if let Err(err) = ch

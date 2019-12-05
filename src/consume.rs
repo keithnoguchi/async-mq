@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: GPL-2.0
 use crate::Client;
+use lapin::Result;
 use lapin::{options::*, types::FieldTable};
-use lapin::{Connection, Result};
 
 pub struct Consumer {
-    c: Connection,
+    client: Option<Client>,
 }
 
 impl Consumer {
-    pub async fn new(c: Client) -> Result<Self> {
-        Ok(Self { c: c.0 })
+    pub fn new(c: Client) -> Self {
+        Self { client: Some(c) }
     }
     pub async fn worker(&mut self, queue: &str) -> Result<(lapin::Consumer, lapin::Channel)> {
-        let c = match self.c.create_channel().await {
+        let c = match self.client.as_ref().unwrap().0.create_channel().await {
             Ok(c) => c,
             Err(err) => return Err(err),
         };

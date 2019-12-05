@@ -3,7 +3,7 @@ use flatbuffers::FlatBufferBuilder;
 use futures_executor::{block_on, LocalPool, LocalSpawner};
 use futures_util::{future::FutureExt, stream::StreamExt, task::LocalSpawnExt};
 use lapin::{options::*, Result};
-use rustmq::{Client, Producer};
+use rustmq::{Client, Consumer, Producer};
 use std::{env, thread};
 
 fn main() -> thread::Result<()> {
@@ -48,13 +48,10 @@ fn producer(c: Client, queue_name: String) -> Result<()> {
     })
 }
 
-async fn consumers(mut c: Client, queue_name: &'static str, spawner: LocalSpawner) {
-    let mut consumer = c.consumer().await.expect("cannot create consumer");
+async fn consumers(c: Client, queue_name: &'static str, spawner: LocalSpawner) {
+    let mut c = Consumer::new(c);
     for i in 0..4 {
-        let (worker, channel) = consumer
-            .worker(queue_name)
-            .await
-            .expect("cannot create worker");
+        let (worker, channel) = c.worker(queue_name).await.expect("cannot create worker");
         let _task = spawner.spawn_local(async move {
             worker
                 .for_each(move |delivery| {
