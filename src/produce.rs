@@ -27,7 +27,7 @@ impl Producer {
         let ch = match &self.channel {
             Some(ch) => ch,
             None => {
-                if let Err(err) = self.declare().await {
+                if let Err(err) = self.create_channel().await {
                     return Err(err);
                 }
                 self.channel.as_ref().unwrap()
@@ -42,7 +42,7 @@ impl Producer {
         )
         .await
     }
-    async fn declare(&mut self) -> Result<()> {
+    async fn create_channel(&mut self) -> Result<()> {
         let c = match self.client.as_ref().unwrap().c.create_channel().await {
             Ok(channel) => channel,
             Err(err) => return Err(err),
