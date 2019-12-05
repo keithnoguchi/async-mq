@@ -65,13 +65,13 @@ impl Producer {
 impl Default for Producer {
     fn default() -> Self {
         Self {
-            client: None,
-            channel: None,
             exchange: String::from(""),
             queue: String::from("/"),
             properties: BasicProperties::default(),
             publish_options: BasicPublishOptions::default(),
             queue_options: QueueDeclareOptions::default(),
+            client: None,
+            channel: None,
         }
     }
 }
