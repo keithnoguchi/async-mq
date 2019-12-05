@@ -12,7 +12,7 @@ fn main() -> thread::Result<()> {
     // Consumers sharing the single TCP connection to the broker.
     let mut client = Client::new(parse());
     block_on(client.connect()).unwrap();
-    let mut consumers = Vec::with_capacity(4);
+    let mut consumers = Vec::with_capacity(8);
     for _ in 0..consumers.capacity() {
         let builder = ConsumerBuilder::new(client.clone());
         let c = thread::spawn(move || {
@@ -20,7 +20,7 @@ fn main() -> thread::Result<()> {
             let spawner = pool.spawner();
             spawner
                 .spawn_local(consumer(builder, &queue_name, spawner.clone()))
-                .expect("cannot spawn consumers");
+                .expect("consumers died");
             pool.run()
         });
         consumers.push(c);
@@ -29,11 +29,11 @@ fn main() -> thread::Result<()> {
     // Producer sharing the single TCP connection to the broker.
     let mut client = Client::new(parse());
     block_on(client.connect()).unwrap();
-    let mut producers = Vec::with_capacity(2);
+    let mut producers = Vec::with_capacity(4);
     for _ in 0..producers.capacity() {
         let client = client.clone();
         let p = thread::spawn(move || {
-            producer(client, String::from(queue_name)).expect("cannot start producer");
+            producer(client, String::from(queue_name)).expect("producer died");
         });
         producers.push(p);
     }

@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0
 use crate::{msg, Client};
 use futures_util::stream::StreamExt;
-use lapin::options::{BasicConsumeOptions, BasicPublishOptions, QueueDeclareOptions};
+use lapin::options::{
+    BasicAckOptions, BasicConsumeOptions, BasicPublishOptions, QueueDeclareOptions,
+};
 use lapin::types::FieldTable;
 use lapin::{BasicProperties, Channel, Result};
 use std::default::Default;
@@ -75,9 +77,18 @@ impl Producer {
                 Ok(delivery) => {
                     let msg = msg::get_root_as_message(&delivery.data);
                     eprint!("{}", msg.msg().unwrap());
+                    if let Err(err) = reply_ch
+                        .basic_ack(delivery.delivery_tag, BasicAckOptions::default())
+                        .await
+                    {
+                        return Err(err);
+                    }
                 }
                 Err(err) => return Err(err),
             }
+        }
+        if let Err(err) = reply_ch.close(0, "closing").await {
+            return Err(err);
         }
         Ok(())
     }
