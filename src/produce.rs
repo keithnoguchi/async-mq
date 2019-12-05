@@ -11,6 +11,7 @@ pub struct Producer {
     pub properties: BasicProperties,
     pub publish_options: BasicPublishOptions,
     pub queue_options: QueueDeclareOptions,
+    pub field_table: FieldTable,
     client: Option<Client>,
     channel: Option<Channel>,
 }
@@ -22,6 +23,34 @@ impl Producer {
             queue,
             ..Default::default()
         }
+    }
+    pub async fn rpc(&mut self, msg: Vec<u8>) -> Result<()> {
+        let ch = match &self.channel {
+            Some(ch) => ch,
+            None => {
+                if let Err(err) = self.create_channel().await {
+                    return Err(err);
+                }
+                self.channel.as_ref().unwrap()
+            }
+        };
+        let opts = QueueDeclareOptions {
+            exclusive: true,
+            auto_delete: true,
+            ..self.queue_options.clone()
+        };
+        let q = match ch.queue_declare("", opts, self.field_table.clone()).await {
+            Ok(q) => q,
+            Err(err) => return Err(err),
+        };
+        ch.basic_publish(
+            &self.exchange,
+            &self.queue,
+            self.publish_options.clone(),
+            msg,
+            self.properties.clone().with_reply_to(q.name().clone()),
+        )
+        .await
     }
     pub async fn publish(&mut self, msg: Vec<u8>) -> Result<()> {
         let ch = match &self.channel {
@@ -50,7 +79,7 @@ impl Producer {
             .channel_and_queue(
                 &self.queue,
                 self.queue_options.clone(),
-                FieldTable::default(),
+                self.field_table.clone(),
             )
             .await
         {
@@ -70,6 +99,7 @@ impl Default for Producer {
             properties: BasicProperties::default(),
             publish_options: BasicPublishOptions::default(),
             queue_options: QueueDeclareOptions::default(),
+            field_table: FieldTable::default(),
             client: None,
             channel: None,
         }

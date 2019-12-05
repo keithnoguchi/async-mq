@@ -61,7 +61,7 @@ fn producer(c: Client, queue_name: String) -> Result<()> {
                 let msg = mb.finish();
                 builder.finish(msg, None);
                 let msg = builder.finished_data();
-                p.publish(msg.to_vec()).await?;
+                p.rpc(msg.to_vec()).await?;
                 builder.reset();
             }
         }
