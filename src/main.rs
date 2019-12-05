@@ -51,12 +51,14 @@ fn producer(c: Client, queue_name: String) -> Result<()> {
 async fn consumers(c: Client, queue_name: &'static str, spawner: LocalSpawner) {
     let mut builder = ConsumerBuilder::new(c);
     for i in 0..4 {
-        let (consumer, channel) = builder
+        let consumer = builder
             .consumer(queue_name)
             .await
             .expect("cannot create consumer");
         let _task = spawner.spawn_local(async move {
+            let channel = consumer.channel;
             consumer
+                .consumer
                 .for_each(move |delivery| {
                     let delivery = delivery.expect("error caught in consumer");
                     let msg = rustmq::get_root_as_message(&delivery.data);

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 pub use client::Client;
-pub use consume::ConsumerBuilder;
+pub use consume::{Consumer, ConsumerBuilder};
 pub use msg::{get_root_as_message, MessageBuilder, MessageType};
 pub use produce::Producer;
 
