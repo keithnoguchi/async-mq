@@ -16,7 +16,11 @@ impl Consumer {
         while let Some(delivery) = &self.consumer.next().await {
             let delivery = delivery.as_ref().unwrap();
             let msg = msg::get_root_as_message(&delivery.data);
-            print!("{}", msg.msg().unwrap());
+            if let Some(reply_to) = delivery.properties.reply_to() {
+                self.publish(reply_to.as_str()).await?;
+            } else {
+                print!("{}", msg.msg().unwrap());
+            }
             if let Err(err) = self
                 .channel
                 .basic_ack(delivery.delivery_tag, BasicAckOptions::default())
@@ -25,6 +29,10 @@ impl Consumer {
                 return Err(err);
             }
         }
+        Ok(())
+    }
+    pub async fn publish(&mut self, queue: &str) -> Result<()> {
+        print!("{}", queue);
         Ok(())
     }
 }
