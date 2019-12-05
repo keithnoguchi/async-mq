@@ -10,9 +10,9 @@ fn main() -> thread::Result<()> {
     // Using a single client connection to the rabbit broker.
     let client1 = client(parse());
     let client2 = client1.clone();
+    let queue_name = "hello";
     let p = thread::spawn(move || {
-        let queue_name = "hello";
-        producer(client1, &queue_name).expect("cannot start producer");
+        producer(client1, queue_name).expect("cannot start producer");
     });
     let c = thread::spawn(move || {
         let queue_name = "hello";
@@ -35,7 +35,8 @@ fn client(uri: String) -> Client {
 fn producer(mut c: Client, queue_name: &'static str) -> Result<()> {
     let mut pool = LocalPool::new();
     pool.run_until(async move {
-        let mut producer = c.producer(queue_name).await?;
+        let mut p = c.producer(String::from(queue_name));
+        p.declare().await?;
         let mut builder = FlatBufferBuilder::new();
         loop {
             for data in { b'a'..b'z' } {
@@ -45,7 +46,7 @@ fn producer(mut c: Client, queue_name: &'static str) -> Result<()> {
                 let msg = mb.finish();
                 builder.finish(msg, None);
                 let msg = builder.finished_data();
-                producer.publish(msg.to_vec()).await?;
+                p.publish(msg.to_vec()).await?;
                 builder.reset();
             }
         }

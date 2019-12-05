@@ -3,29 +3,69 @@ use crate::Client;
 use lapin::options::{BasicPublishOptions, QueueDeclareOptions};
 use lapin::types::FieldTable;
 use lapin::{BasicProperties, Channel, Result};
+use std::default::Default;
 
 pub struct Producer {
-    queue: &'static str,
-    channel: Channel,
+    pub exchange: String,
+    pub queue: String,
+    pub properties: BasicProperties,
+    pub publish_options: BasicPublishOptions,
+    pub queue_options: QueueDeclareOptions,
+    client: Option<Client>,
+    channel: Option<Channel>,
 }
 
 impl Producer {
-    pub async fn new(c: Client, queue: &'static str) -> Result<Self> {
-        let channel = c.c.create_channel().await?;
-        channel
-            .queue_declare(queue, QueueDeclareOptions::default(), FieldTable::default())
-            .await?;
-        Ok(Self { channel, queue })
+    pub fn new(c: Client, queue: String) -> Self {
+        Self {
+            client: Some(c),
+            queue,
+            ..Default::default()
+        }
+    }
+    pub async fn declare(&mut self) -> Result<()> {
+        let c = match self.client.as_ref().unwrap().c.create_channel().await {
+            Ok(channel) => channel,
+            Err(err) => return Err(err),
+        };
+        if let Err(err) = c
+            .queue_declare(
+                &self.queue,
+                self.queue_options.clone(),
+                FieldTable::default(),
+            )
+            .await
+        {
+            return Err(err);
+        }
+        self.channel = Some(c);
+        Ok(())
     }
     pub async fn publish(&mut self, msg: Vec<u8>) -> Result<()> {
         self.channel
+            .as_ref()
+            .unwrap()
             .basic_publish(
-                "",
-                self.queue,
-                BasicPublishOptions::default(),
+                &self.exchange,
+                &self.queue,
+                self.publish_options.clone(),
                 msg,
-                BasicProperties::default(),
+                self.properties.clone(),
             )
             .await
+    }
+}
+
+impl Default for Producer {
+    fn default() -> Self {
+        Self {
+            client: None,
+            channel: None,
+            exchange: String::from(""),
+            queue: String::from("/"),
+            properties: BasicProperties::default(),
+            publish_options: BasicPublishOptions::default(),
+            queue_options: QueueDeclareOptions::default(),
+        }
     }
 }
