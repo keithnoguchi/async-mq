@@ -43,20 +43,20 @@ impl Producer {
         .await
     }
     async fn create_channel(&mut self) -> Result<()> {
-        let ch = match self.client.as_ref().unwrap().0.create_channel().await {
-            Ok(ch) => ch,
-            Err(err) => return Err(err),
-        };
-        if let Err(err) = ch
-            .queue_declare(
+        let ch = match self
+            .client
+            .as_ref()
+            .unwrap()
+            .channel_and_queue(
                 &self.queue,
                 self.queue_options.clone(),
                 FieldTable::default(),
             )
             .await
         {
-            return Err(err);
-        }
+            Ok((ch, _)) => ch,
+            Err(err) => return Err(err),
+        };
         self.channel = Some(ch);
         Ok(())
     }
