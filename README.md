@@ -13,12 +13,12 @@
 - [client]: For struct Client
 - [consume]: For struct Consumer
 - [publish]: For Struct Publisher
-- [monster]: [Flatbuffers] tutorial example
+- [msg]: [Flatbuffers] tutorial example
 
 [client]: src/client.rs
 [consume]: src/consume.rs
 [publish]: src/publish.rs
-[monster]: src/monster.rs
+[msg]: src/msg.rs
 [main.rs]: src/main.rs
 [flatbuffers]: https://google.github.io/flatbuffers/
 
