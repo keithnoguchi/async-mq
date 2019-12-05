@@ -23,24 +23,6 @@ impl Producer {
             ..Default::default()
         }
     }
-    pub async fn declare(&mut self) -> Result<()> {
-        let c = match self.client.as_ref().unwrap().c.create_channel().await {
-            Ok(channel) => channel,
-            Err(err) => return Err(err),
-        };
-        if let Err(err) = c
-            .queue_declare(
-                &self.queue,
-                self.queue_options.clone(),
-                FieldTable::default(),
-            )
-            .await
-        {
-            return Err(err);
-        }
-        self.channel = Some(c);
-        Ok(())
-    }
     pub async fn publish(&mut self, msg: Vec<u8>) -> Result<()> {
         let ch = match &self.channel {
             Some(ch) => ch,
@@ -59,6 +41,24 @@ impl Producer {
             self.properties.clone(),
         )
         .await
+    }
+    async fn declare(&mut self) -> Result<()> {
+        let c = match self.client.as_ref().unwrap().c.create_channel().await {
+            Ok(channel) => channel,
+            Err(err) => return Err(err),
+        };
+        if let Err(err) = c
+            .queue_declare(
+                &self.queue,
+                self.queue_options.clone(),
+                FieldTable::default(),
+            )
+            .await
+        {
+            return Err(err);
+        }
+        self.channel = Some(c);
+        Ok(())
     }
 }
 
