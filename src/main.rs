@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0
+use flatbuffers::FlatBufferBuilder;
 use futures_executor::{block_on, LocalPool, LocalSpawner};
 use futures_util::{future::FutureExt, stream::StreamExt, task::LocalSpawnExt};
 use lapin::{options::*, Result};
@@ -33,28 +34,37 @@ fn client(uri: String) -> Client {
 
 fn producer(mut c: Client, queue_name: &'static str) -> Result<()> {
     let mut pool = LocalPool::new();
-    let payload = b"Hello world!";
     pool.run_until(async move {
         let mut producer = c.producer(queue_name).await?;
+        let mut builder = FlatBufferBuilder::new();
         loop {
-            producer.publish(payload.to_vec()).await?;
+            for data in { b'a'..b'z' } {
+                let data = builder.create_string(&String::from_utf8(vec![data]).unwrap());
+                let mut mb = rustmq::MessageBuilder::new(&mut builder);
+                mb.add_msg(data);
+                let msg = mb.finish();
+                builder.finish(msg, None);
+                let msg = builder.finished_data();
+                producer.publish(msg.to_vec()).await?;
+                builder.reset();
+            }
         }
     })
 }
 
 async fn consumers(mut c: Client, queue_name: &'static str, spawner: LocalSpawner) {
     let mut consumer = c.consumer().await.expect("cannot create consumer");
-    for i in { b'a'..b'z' } {
+    for i in 0..4 {
         let (worker, channel) = consumer
             .worker(queue_name)
             .await
             .expect("cannot create worker");
-        let x: char = i.into();
         let _task = spawner.spawn_local(async move {
             worker
                 .for_each(move |delivery| {
-                    eprint!("{}", x);
                     let delivery = delivery.expect("error caught in consumer");
+                    let msg = rustmq::get_root_as_message(&delivery.data);
+                    print!("{}[{}]", i, msg.msg().unwrap());
                     channel
                         .basic_ack(delivery.delivery_tag, BasicAckOptions::default())
                         .map(|_| ())
