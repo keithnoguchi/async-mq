@@ -3,7 +3,7 @@ use flatbuffers::FlatBufferBuilder;
 use futures_executor::{block_on, LocalPool, LocalSpawner};
 use futures_util::{future::FutureExt, stream::StreamExt, task::LocalSpawnExt};
 use lapin::{options::*, Result};
-use rustmq::Client;
+use rustmq::{Client, Producer};
 use std::{env, thread};
 
 fn main() -> thread::Result<()> {
@@ -12,7 +12,7 @@ fn main() -> thread::Result<()> {
     let client2 = client1.clone();
     let queue_name = "hello";
     let p = thread::spawn(move || {
-        producer(client1, queue_name).expect("cannot start producer");
+        producer(client1, String::from(queue_name)).expect("cannot start producer");
     });
     let c = thread::spawn(move || {
         let queue_name = "hello";
@@ -32,10 +32,10 @@ fn client(uri: String) -> Client {
     block_on(client).unwrap()
 }
 
-fn producer(mut c: Client, queue_name: &'static str) -> Result<()> {
+fn producer(c: Client, queue_name: String) -> Result<()> {
     let mut pool = LocalPool::new();
     pool.run_until(async move {
-        let mut p = c.producer(String::from(queue_name));
+        let mut p = Producer::new(c, queue_name);
         p.declare().await?;
         let mut builder = FlatBufferBuilder::new();
         loop {
