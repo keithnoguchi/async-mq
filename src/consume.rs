@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
-use crate::Client;
-use lapin::options::{BasicConsumeOptions, QueueDeclareOptions};
+use crate::{msg, Client};
+use futures_util::stream::StreamExt;
+use lapin::options::{BasicAckOptions, BasicConsumeOptions, QueueDeclareOptions};
 use lapin::types::FieldTable;
 use lapin::{Channel, Result};
 use std::default::Default;
@@ -8,6 +9,24 @@ use std::default::Default;
 pub struct Consumer {
     pub channel: Channel,
     pub consumer: lapin::Consumer,
+}
+
+impl Consumer {
+    pub async fn run(&mut self) -> Result<()> {
+        while let Some(delivery) = &self.consumer.next().await {
+            let delivery = delivery.as_ref().unwrap();
+            let msg = msg::get_root_as_message(&delivery.data);
+            print!("{}", msg.msg().unwrap());
+            if let Err(err) = self
+                .channel
+                .basic_ack(delivery.delivery_tag, BasicAckOptions::default())
+                .await
+            {
+                return Err(err);
+            }
+        }
+        Ok(())
+    }
 }
 
 pub struct ConsumerBuilder {

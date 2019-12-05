@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0
 use flatbuffers::FlatBufferBuilder;
 use futures_executor::{block_on, LocalPool, LocalSpawner};
-use futures_util::{future::FutureExt, stream::StreamExt, task::LocalSpawnExt};
-use lapin::{options::*, Result};
+use futures_util::task::LocalSpawnExt;
+use lapin::Result;
 use rustmq::{Client, ConsumerBuilder, Producer};
 use std::{env, thread};
 
@@ -48,24 +48,14 @@ fn producer(c: Client, queue_name: String) -> Result<()> {
 }
 
 async fn consumers(mut builder: ConsumerBuilder, queue_name: &'static str, spawner: LocalSpawner) {
-    for i in 0..4 {
-        let consumer = builder
+    // Four consumers.
+    for _ in 0usize..8 {
+        let mut consumer = builder
             .consumer(queue_name)
             .await
             .expect("cannot create consumer");
         let _task = spawner.spawn_local(async move {
-            let channel = consumer.channel;
-            consumer
-                .consumer
-                .for_each(move |delivery| {
-                    let delivery = delivery.expect("error caught in consumer");
-                    let msg = rustmq::get_root_as_message(&delivery.data);
-                    print!("{}[{}]", i, msg.msg().unwrap());
-                    channel
-                        .basic_ack(delivery.delivery_tag, BasicAckOptions::default())
-                        .map(|_| ())
-                })
-                .await
+            consumer.run().await.expect("consumer error");
         });
     }
 }
