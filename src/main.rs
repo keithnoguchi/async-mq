@@ -8,11 +8,10 @@ use std::{env, thread};
 
 fn main() -> thread::Result<()> {
     // Using a single client connection to the rabbit broker.
-    let queue_name = "hello";
-    let url = parse();
-    let client = Client::new(&url);
-    let client = block_on(client).unwrap();
+    let mut client = Client::new(parse());
+    block_on(client.connect()).unwrap();
     let builder = ConsumerBuilder::new(client.clone());
+    let queue_name = "hello";
     let p = thread::spawn(move || {
         producer(client, String::from(queue_name)).expect("cannot start producer");
     });
