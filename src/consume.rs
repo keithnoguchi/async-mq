@@ -23,15 +23,14 @@ impl ConsumerBuilder {
         }
     }
     pub async fn consumer(&mut self, queue: &str) -> Result<Consumer> {
-        let channel = match self.client.as_ref().unwrap().0.create_channel().await {
-            Ok(ch) => ch,
-            Err(err) => return Err(err),
-        };
-        let q = match channel
-            .queue_declare(queue, self.queue_options.clone(), FieldTable::default())
+        let (channel, q) = match self
+            .client
+            .as_ref()
+            .unwrap()
+            .channel_and_queue(queue, self.queue_options.clone(), FieldTable::default())
             .await
         {
-            Ok(q) => q,
+            Ok((ch, q)) => (ch, q),
             Err(err) => return Err(err),
         };
         let consumer = match channel
