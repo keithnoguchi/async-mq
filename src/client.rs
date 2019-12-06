@@ -1,35 +1,43 @@
 // SPDX-License-Identifier: GPL-2.0
+//! client module for the connection to the message queue broker.
 use lapin::options::QueueDeclareOptions;
 use lapin::types::FieldTable;
-use lapin::{Channel, Connection, ConnectionProperties, Queue, Result};
+use lapin::{Channel, ConnectionProperties, Queue, Result};
+use std::default::Default;
 
-/// ClientBuilder builds the Client.
-pub struct ClientBuilder {
-    uri: String,
+/// Client is the non-consuming builder for the Connection.
+pub struct Client {
     props: ConnectionProperties,
 }
 
-impl ClientBuilder {
-    pub fn new(uri: String) -> Self {
+impl Client {
+    pub fn new() -> Self {
         Self {
-            uri,
-            props: ConnectionProperties::default(),
+            ..Default::default()
         }
     }
-    pub async fn build(&self) -> Result<Client> {
-        let c = match Connection::connect(&self.uri, self.props.clone()).await {
+    pub async fn connect(&self, uri: &str) -> Result<Connection> {
+        let c = match lapin::Connection::connect(uri, self.props.clone()).await {
             Ok(c) => c,
             Err(err) => return Err(err),
         };
-        Ok(Client(c))
+        Ok(Connection(c))
     }
 }
 
-/// Client represents the connection to the AMQP broker.
-#[derive(Clone)]
-pub struct Client(Connection);
+impl Default for Client {
+    fn default() -> Self {
+        Self {
+            props: ConnectionProperties::default(),
+        }
+    }
+}
 
-impl Client {
+/// Connection represents the connection to the message queue broker.
+#[derive(Clone)]
+pub struct Connection(lapin::Connection);
+
+impl Connection {
     /// channel creates the channel and the queue over the connection
     /// and returns the Future<Output = <Channel, Queue>>.
     pub async fn channel(

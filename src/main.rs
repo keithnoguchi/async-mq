@@ -3,19 +3,20 @@ use flatbuffers::FlatBufferBuilder;
 use futures_executor::{block_on, LocalPool, LocalSpawner};
 use futures_util::task::LocalSpawnExt;
 use lapin::Result;
-use rustmq::{Client, ClientBuilder, ConsumerBuilder, Producer};
+use rustmq::{Client, Connection, ConsumerBuilder, Producer};
 use std::{env, thread};
 
 fn main() -> thread::Result<()> {
-    let builder = ClientBuilder::new(parse());
+    let client = Client::new();
+    let uri = parse();
     let queue_name = "hello";
 
-    // A single client for the multiple consumers.
-    let client = block_on(builder.build()).expect("fail to create consumer client");
+    // A single connection for the multiple consumers.
+    let conn = block_on(client.connect(&uri)).expect("fail to connect");
     let mut consumers = Vec::with_capacity(8);
     for _ in 0..consumers.capacity() {
-        let builder = ConsumerBuilder::new(client.clone());
-        let c = thread::spawn(move || {
+        let builder = ConsumerBuilder::new(conn.clone());
+        let consumer = thread::spawn(move || {
             let mut pool = LocalPool::new();
             let spawner = pool.spawner();
             spawner
@@ -23,36 +24,36 @@ fn main() -> thread::Result<()> {
                 .expect("consumers died");
             pool.run()
         });
-        consumers.push(c);
+        consumers.push(consumer);
     }
 
-    // A single client for the multiple producers.
-    let client = block_on(builder.build()).expect("fail to create producer client");
+    // A single connection for the multiple producers.
+    let conn = block_on(client.connect(&uri)).expect("fail to connect");
     let mut producers = Vec::with_capacity(4);
     for _ in 0..producers.capacity() {
-        let client = client.clone();
+        let conn = conn.clone();
         let p = thread::spawn(move || {
-            producer(client, String::from(queue_name)).expect("producer died");
+            producer(conn, String::from(queue_name)).expect("producer died");
         });
         producers.push(p);
     }
 
     while !consumers.is_empty() {
-        let c = consumers.pop().unwrap();
-        c.join()?;
+        let consumer = consumers.pop().unwrap();
+        consumer.join()?;
     }
     while !producers.is_empty() {
-        let p = producers.pop().unwrap();
-        p.join()?;
+        let producer = producers.pop().unwrap();
+        producer.join()?;
     }
     Ok(())
 }
 
-fn producer(c: Client, queue_name: String) -> Result<()> {
+fn producer(conn: Connection, queue_name: String) -> Result<()> {
     let mut pool = LocalPool::new();
     pool.run_until(async move {
         let mut builder = FlatBufferBuilder::new();
-        let mut p = Producer::new(c, queue_name);
+        let mut p = Producer::new(conn, queue_name);
         loop {
             for data in { b'a'..b'z' } {
                 let data = builder.create_string(&String::from_utf8(vec![data]).unwrap());

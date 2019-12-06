@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0
-use crate::{msg, Client};
+use crate::{msg, Connection};
 use futures_util::stream::StreamExt;
 use lapin::options::{
     BasicAckOptions, BasicConsumeOptions, BasicPublishOptions, QueueDeclareOptions,
@@ -15,14 +15,14 @@ pub struct Producer {
     pub publish_options: BasicPublishOptions,
     pub queue_options: QueueDeclareOptions,
     pub field_table: FieldTable,
-    client: Option<Client>,
+    client: Option<Connection>,
     channel: Option<Channel>,
 }
 
 impl Producer {
-    pub fn new(c: Client, queue: String) -> Self {
+    pub fn new(conn: Connection, queue: String) -> Self {
         Self {
-            client: Some(c),
+            client: Some(conn),
             queue,
             ..Default::default()
         }
