@@ -71,10 +71,7 @@ fn producer(c: Client, queue_name: String) -> Result<()> {
 
 async fn consumer(mut builder: ConsumerBuilder, queue_name: &'static str, spawner: LocalSpawner) {
     for _ in 0usize..4 {
-        let mut consumer = builder
-            .consumer(queue_name)
-            .await
-            .expect("cannot create consumer");
+        let mut consumer = builder.consumer(queue_name).await.expect("consumer died");
         let _task = spawner.spawn_local(async move {
             consumer.run().await.expect("consumer error");
         });
