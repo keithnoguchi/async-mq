@@ -65,7 +65,7 @@ impl ConsumerBuilder {
             .client
             .as_ref()
             .unwrap()
-            .channel_and_queue(queue, self.queue_options.clone(), FieldTable::default())
+            .channel(queue, self.queue_options.clone(), FieldTable::default())
             .await
         {
             Ok((ch, q)) => (ch, q),

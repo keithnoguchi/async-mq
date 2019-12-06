@@ -3,15 +3,15 @@ use flatbuffers::FlatBufferBuilder;
 use futures_executor::{block_on, LocalPool, LocalSpawner};
 use futures_util::task::LocalSpawnExt;
 use lapin::Result;
-use rustmq::{Client, ConsumerBuilder, Producer};
+use rustmq::{Client, ClientBuilder, ConsumerBuilder, Producer};
 use std::{env, thread};
 
 fn main() -> thread::Result<()> {
+    let builder = ClientBuilder::new(parse());
     let queue_name = "hello";
 
-    // Consumers sharing the single TCP connection to the broker.
-    let mut client = Client::new(parse());
-    block_on(client.connect()).unwrap();
+    // A single client for the multiple consumers.
+    let client = block_on(builder.build()).expect("fail to create consumer client");
     let mut consumers = Vec::with_capacity(8);
     for _ in 0..consumers.capacity() {
         let builder = ConsumerBuilder::new(client.clone());
@@ -26,9 +26,8 @@ fn main() -> thread::Result<()> {
         consumers.push(c);
     }
 
-    // Producer sharing the single TCP connection to the broker.
-    let mut client = Client::new(parse());
-    block_on(client.connect()).unwrap();
+    // A single client for the multiple producers.
+    let client = block_on(builder.build()).expect("fail to create producer client");
     let mut producers = Vec::with_capacity(4);
     for _ in 0..producers.capacity() {
         let client = client.clone();

@@ -46,7 +46,7 @@ impl Producer {
             .client
             .as_ref()
             .unwrap()
-            .channel_and_queue("", opts, self.field_table.clone())
+            .channel("", opts, self.field_table.clone())
             .await
         {
             Ok((ch, q)) => (ch, q),
@@ -116,7 +116,7 @@ impl Producer {
             .client
             .as_ref()
             .unwrap()
-            .channel_and_queue(
+            .channel(
                 &self.queue,
                 self.queue_options.clone(),
                 self.field_table.clone(),

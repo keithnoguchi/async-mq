@@ -2,54 +2,50 @@
 use lapin::options::QueueDeclareOptions;
 use lapin::types::FieldTable;
 use lapin::{Channel, Connection, ConnectionProperties, Queue, Result};
-use std::default::Default;
 
-#[derive(Clone)]
-pub struct Client {
-    pub properties: ConnectionProperties,
+/// ClientBuilder builds the Client.
+pub struct ClientBuilder {
     uri: String,
-    connection: Option<Connection>,
+    props: ConnectionProperties,
 }
 
-impl Client {
+impl ClientBuilder {
     pub fn new(uri: String) -> Self {
         Self {
             uri,
-            ..Default::default()
+            props: ConnectionProperties::default(),
         }
     }
-    pub async fn connect(&mut self) -> Result<()> {
-        let c = match Connection::connect(&self.uri, self.properties.clone()).await {
+    pub async fn build(&self) -> Result<Client> {
+        let c = match Connection::connect(&self.uri, self.props.clone()).await {
             Ok(c) => c,
             Err(err) => return Err(err),
         };
-        self.connection = Some(c);
-        Ok(())
+        Ok(Client(c))
     }
-    pub async fn channel_and_queue(
+}
+
+/// Client represents the connection to the AMQP broker.
+#[derive(Clone)]
+pub struct Client(Connection);
+
+impl Client {
+    /// channel creates the channel and the queue over the connection
+    /// and returns the Future<Output = <Channel, Queue>>.
+    pub async fn channel(
         &self,
         queue: &str,
-        options: QueueDeclareOptions,
-        table: FieldTable,
+        opts: QueueDeclareOptions,
+        field: FieldTable,
     ) -> Result<(Channel, Queue)> {
-        let ch = match self.connection.as_ref().unwrap().create_channel().await {
+        let ch = match self.0.create_channel().await {
             Ok(ch) => ch,
             Err(err) => return Err(err),
         };
-        let q = match ch.queue_declare(queue, options, table).await {
+        let q = match ch.queue_declare(queue, opts, field).await {
             Ok(q) => q,
             Err(err) => return Err(err),
         };
         Ok((ch, q))
-    }
-}
-
-impl Default for Client {
-    fn default() -> Self {
-        Self {
-            uri: String::from(""),
-            properties: ConnectionProperties::default(),
-            connection: None,
-        }
     }
 }
