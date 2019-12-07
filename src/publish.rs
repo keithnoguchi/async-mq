@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: APACHE-2.0 AND MIT
 //! produce module for Publisher and PublisherBuilder.
-use crate::msg;
 use futures_util::stream::StreamExt;
 use lapin;
 
@@ -31,7 +30,7 @@ impl PublisherBuilder {
             tx_opts: lapin::options::BasicPublishOptions::default(),
             rx_opts: lapin::options::BasicConsumeOptions::default(),
             ack_opts: lapin::options::BasicAckOptions::default(),
-            producer: Box::new(crate::produce::DumpProducer {}),
+            producer: Box::new(crate::produce::FlatbufferDumpProducer {}),
         }
     }
     pub fn exchange(&mut self, exchange: String) -> &mut Self {
@@ -144,10 +143,10 @@ impl Publisher {
     }
     async fn recv(&mut self, msg: lapin::message::Delivery) -> lapin::Result<()> {
         let delivery_tag = msg.delivery_tag;
-        let msg = msg::get_root_as_message(&msg.data);
-        eprint!("{}", msg.msg().unwrap());
-        if let Err(err) = self.rx.basic_ack(delivery_tag, self.ack_opts.clone()).await {
-            return Err(err);
+        if let Ok(()) = self.producer.recv(msg.data).await {
+            if let Err(err) = self.rx.basic_ack(delivery_tag, self.ack_opts.clone()).await {
+                return Err(err);
+            }
         }
         Ok(())
     }

@@ -5,7 +5,7 @@ use lapin;
 
 #[async_trait]
 pub trait Producer {
-    async fn receive(&mut self, msg: Vec<u8>) -> lapin::Result<()>;
+    async fn recv(&mut self, msg: Vec<u8>) -> lapin::Result<()>;
     fn box_clone(&self) -> Box<dyn Producer + Send>;
 }
 
@@ -17,11 +17,15 @@ impl Clone for Box<dyn Producer + Send> {
 }
 
 #[derive(Clone)]
-pub struct DumpProducer;
+pub struct FlatbufferDumpProducer;
 
 #[async_trait]
-impl Producer for DumpProducer {
-    async fn receive(&mut self, _msg: Vec<u8>) -> lapin::Result<()> {
+impl Producer for FlatbufferDumpProducer {
+    async fn recv(&mut self, msg: Vec<u8>) -> lapin::Result<()> {
+        let msg = crate::msg::get_root_as_message(&msg);
+        if let Some(msg) = msg.msg() {
+            eprint!("{}", msg);
+        }
         Ok(())
     }
     fn box_clone(&self) -> Box<dyn Producer + Send> {
