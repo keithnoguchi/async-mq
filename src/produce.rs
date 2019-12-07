@@ -1,121 +1,48 @@
 // SPDX-License-Identifier: GPL-2.0
+//! produce module for Producer and ProducerBuilder.
 use crate::{msg, Connection};
 use futures_util::stream::StreamExt;
 use lapin::options::{
     BasicAckOptions, BasicConsumeOptions, BasicPublishOptions, QueueDeclareOptions,
 };
 use lapin::types::FieldTable;
-use lapin::{BasicProperties, Channel, Result};
-use std::default::Default;
+use lapin::{BasicProperties, Channel, Consumer, Result};
 
-pub struct Producer {
-    pub exchange: String,
-    pub queue: String,
-    pub properties: BasicProperties,
-    pub publish_options: BasicPublishOptions,
-    pub queue_options: QueueDeclareOptions,
-    pub field_table: FieldTable,
-    client: Option<Connection>,
-    channel: Option<Channel>,
+/// ProducerBuilder builds the Producer.
+#[derive(Clone)]
+pub struct ProducerBuilder {
+    conn: Connection,
+    ex: String,
+    queue: String,
+    queue_options: QueueDeclareOptions,
+    field_table: FieldTable,
+    properties: BasicProperties,
+    publish_options: BasicPublishOptions,
 }
 
-impl Producer {
-    pub fn new(conn: Connection, queue: String) -> Self {
+impl ProducerBuilder {
+    pub fn new(conn: Connection) -> Self {
         Self {
-            client: Some(conn),
-            queue,
-            ..Default::default()
+            conn,
+            ex: String::from(""),
+            queue: String::from(""),
+            properties: BasicProperties::default(),
+            publish_options: BasicPublishOptions::default(),
+            queue_options: QueueDeclareOptions::default(),
+            field_table: FieldTable::default(),
         }
     }
-    pub async fn rpc(&mut self, msg: Vec<u8>) -> Result<()> {
-        let ch = match &self.channel {
-            Some(ch) => ch,
-            None => {
-                if let Err(err) = self.create_channel().await {
-                    return Err(err);
-                }
-                self.channel.as_ref().unwrap()
-            }
-        };
-        let opts = QueueDeclareOptions {
-            exclusive: true,
-            auto_delete: true,
-            ..self.queue_options.clone()
-        };
-        let (reply_ch, q) = match self
-            .client
-            .as_ref()
-            .unwrap()
-            .channel("", opts, self.field_table.clone())
-            .await
-        {
-            Ok((ch, q)) => (ch, q),
-            Err(err) => return Err(err),
-        };
-        ch.basic_publish(
-            &self.exchange,
-            &self.queue,
-            self.publish_options.clone(),
-            msg,
-            self.properties.clone().with_reply_to(q.name().clone()),
-        )
-        .await?;
-        let mut consumer = match reply_ch
-            .basic_consume(
-                &q,
-                "producer",
-                BasicConsumeOptions::default(),
-                FieldTable::default(),
-            )
-            .await
-        {
-            Ok(c) => c,
-            Err(err) => return Err(err),
-        };
-        if let Some(delivery) = consumer.next().await {
-            match delivery {
-                Ok(delivery) => {
-                    let msg = msg::get_root_as_message(&delivery.data);
-                    eprint!("{}", msg.msg().unwrap());
-                    if let Err(err) = reply_ch
-                        .basic_ack(delivery.delivery_tag, BasicAckOptions::default())
-                        .await
-                    {
-                        return Err(err);
-                    }
-                }
-                Err(err) => return Err(err),
-            }
-        }
-        if let Err(err) = reply_ch.close(0, "closing").await {
-            return Err(err);
-        }
-        Ok(())
+    pub fn exchange(&mut self, exchange: String) -> &Self {
+        self.ex = exchange;
+        self
     }
-    pub async fn publish(&mut self, msg: Vec<u8>) -> Result<()> {
-        let ch = match &self.channel {
-            Some(ch) => ch,
-            None => {
-                if let Err(err) = self.create_channel().await {
-                    return Err(err);
-                }
-                self.channel.as_ref().unwrap()
-            }
-        };
-        ch.basic_publish(
-            &self.exchange,
-            &self.queue,
-            self.publish_options.clone(),
-            msg,
-            self.properties.clone(),
-        )
-        .await
+    pub fn queue(&mut self, queue: String) -> &Self {
+        self.queue = queue;
+        self
     }
-    async fn create_channel(&mut self) -> Result<()> {
-        let ch = match self
-            .client
-            .as_ref()
-            .unwrap()
+    pub async fn build(&self) -> Result<Producer> {
+        let tx = match self
+            .conn
             .channel(
                 &self.queue,
                 self.queue_options.clone(),
@@ -126,22 +53,93 @@ impl Producer {
             Ok((ch, _)) => ch,
             Err(err) => return Err(err),
         };
-        self.channel = Some(ch);
-        Ok(())
+        let rx_opts = QueueDeclareOptions {
+            exclusive: true,
+            auto_delete: true,
+            ..self.queue_options.clone()
+        };
+        let (rx, q) = match self
+            .conn
+            .channel("", rx_opts, self.field_table.clone())
+            .await
+        {
+            Ok((ch, q)) => (ch, q),
+            Err(err) => return Err(err),
+        };
+        let recv = match rx
+            .basic_consume(
+                &q,
+                "producer",
+                BasicConsumeOptions::default(),
+                FieldTable::default(),
+            )
+            .await
+        {
+            Ok(recv) => recv,
+            Err(err) => return Err(err),
+        };
+        Ok(Producer {
+            tx,
+            rx,
+            recv,
+            ex: self.ex.clone(),
+            queue: self.queue.clone(),
+            properties: self.properties.clone(),
+            rx_props: self.properties.clone().with_reply_to(q.name().clone()),
+            publish_options: self.publish_options.clone(),
+        })
     }
 }
 
-impl Default for Producer {
-    fn default() -> Self {
-        Self {
-            exchange: String::from(""),
-            queue: String::from("/"),
-            properties: BasicProperties::default(),
-            publish_options: BasicPublishOptions::default(),
-            queue_options: QueueDeclareOptions::default(),
-            field_table: FieldTable::default(),
-            client: None,
-            channel: None,
+pub struct Producer {
+    tx: Channel,
+    rx: Channel,
+    recv: Consumer,
+    ex: String,
+    queue: String,
+    properties: BasicProperties,
+    rx_props: BasicProperties,
+    publish_options: BasicPublishOptions,
+}
+
+impl Producer {
+    pub async fn rpc(&mut self, msg: Vec<u8>) -> Result<()> {
+        self.tx
+            .basic_publish(
+                &self.ex,
+                &self.queue,
+                self.publish_options.clone(),
+                msg,
+                self.rx_props.clone(),
+            )
+            .await?;
+        if let Some(delivery) = self.recv.next().await {
+            match delivery {
+                Ok(delivery) => {
+                    let msg = msg::get_root_as_message(&delivery.data);
+                    eprint!("{}", msg.msg().unwrap());
+                    if let Err(err) = self
+                        .rx
+                        .basic_ack(delivery.delivery_tag, BasicAckOptions::default())
+                        .await
+                    {
+                        return Err(err);
+                    }
+                }
+                Err(err) => return Err(err),
+            }
         }
+        Ok(())
+    }
+    pub async fn publish(&mut self, msg: Vec<u8>) -> Result<()> {
+        self.tx
+            .basic_publish(
+                &self.ex,
+                &self.queue,
+                self.publish_options.clone(),
+                msg,
+                self.properties.clone(),
+            )
+            .await
     }
 }

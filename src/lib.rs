@@ -2,7 +2,7 @@
 pub use client::{Client, Connection};
 pub use consume::{Consumer, ConsumerBuilder};
 pub use msg::{get_root_as_message, MessageBuilder, MessageType};
-pub use produce::Producer;
+pub use produce::{Producer, ProducerBuilder};
 
 mod client;
 mod consume;
