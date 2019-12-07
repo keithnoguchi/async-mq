@@ -13,14 +13,16 @@ fn main() -> thread::Result<()> {
 
     // A single connection for the multiple consumers.
     let conn = block_on(client.connect(&uri)).expect("fail to connect");
+    let mut builder = ConsumerBuilder::new(conn);
+    builder.queue(String::from(queue_name));
     let mut consumers = Vec::with_capacity(8);
     for _ in 0..consumers.capacity() {
-        let builder = ConsumerBuilder::new(conn.clone());
+        let builder = builder.clone();
         let consumer = thread::spawn(move || {
             let mut pool = LocalPool::new();
             let spawner = pool.spawner();
             spawner
-                .spawn_local(consumer(builder, &queue_name, spawner.clone()))
+                .spawn_local(consumer(builder, spawner.clone()))
                 .expect("consumers died");
             pool.run()
         });
@@ -71,11 +73,11 @@ fn producer(builder: ProducerBuilder) -> Result<()> {
     })
 }
 
-async fn consumer(mut builder: ConsumerBuilder, queue_name: &'static str, spawner: LocalSpawner) {
+async fn consumer(builder: ConsumerBuilder, spawner: LocalSpawner) {
     for _ in 0usize..4 {
-        let mut consumer = builder.consumer(queue_name).await.expect("consumer died");
+        let mut consumer = builder.build().await.expect("consumer built");
         let _task = spawner.spawn_local(async move {
-            consumer.run().await.expect("consumer error");
+            consumer.run().await.expect("consumer died");
         });
     }
 }

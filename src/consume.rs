@@ -5,94 +5,105 @@ use lapin::options::{
     BasicAckOptions, BasicConsumeOptions, BasicPublishOptions, QueueDeclareOptions,
 };
 use lapin::types::FieldTable;
-use lapin::{BasicProperties, Channel, Result};
+use lapin::{BasicProperties, Result};
 use std::default::Default;
 
+#[derive(Clone)]
 pub struct ConsumerBuilder {
-    pub queue_options: QueueDeclareOptions,
-    client: Option<Connection>,
+    conn: Connection,
+    ex: String,
+    queue: String,
+    queue_options: QueueDeclareOptions,
+    field_table: FieldTable,
 }
 
 impl ConsumerBuilder {
     pub fn new(conn: Connection) -> Self {
         Self {
-            client: Some(conn),
-            ..Default::default()
+            conn,
+            ex: String::from(""),
+            queue: String::from(""),
+            queue_options: QueueDeclareOptions::default(),
+            field_table: FieldTable::default(),
         }
     }
-    pub async fn consumer(&mut self, queue: &str) -> Result<Consumer> {
-        let (channel, q) = match self
-            .client
-            .as_ref()
-            .unwrap()
-            .channel(queue, self.queue_options.clone(), FieldTable::default())
+    pub fn exchange(&mut self, exchange: String) -> &Self {
+        self.ex = exchange;
+        self
+    }
+    pub fn queue(&mut self, queue: String) -> &Self {
+        self.queue = queue;
+        self
+    }
+    pub async fn build(&self) -> Result<Consumer> {
+        let (ch, q) = match self
+            .conn
+            .channel(
+                &self.queue,
+                self.queue_options.clone(),
+                self.field_table.clone(),
+            )
             .await
         {
             Ok((ch, q)) => (ch, q),
             Err(err) => return Err(err),
         };
-        let consumer = match channel
+        let recv = match ch
             .clone()
             .basic_consume(
                 &q,
-                "my_consumer",
+                "consumer",
                 BasicConsumeOptions::default(),
                 FieldTable::default(),
             )
             .await
         {
-            Ok(c) => c,
+            Ok(recv) => recv,
             Err(err) => return Err(err),
         };
-        Ok(Consumer { channel, consumer })
-    }
-}
-
-impl Default for ConsumerBuilder {
-    fn default() -> Self {
-        Self {
-            queue_options: QueueDeclareOptions::default(),
-            client: None,
-        }
+        Ok(Consumer { ch, recv })
     }
 }
 
 pub struct Consumer {
-    pub channel: Channel,
-    pub consumer: lapin::Consumer,
+    ch: lapin::Channel,
+    recv: lapin::Consumer,
 }
 
 impl Consumer {
     pub async fn run(&mut self) -> Result<()> {
-        while let Some(delivery) = &self.consumer.next().await {
-            let delivery = delivery.as_ref().unwrap();
-            if let Some(reply_to) = delivery.properties.reply_to() {
-                self.publish(reply_to.as_str(), &delivery.data).await?;
-            } else {
-                let msg = msg::get_root_as_message(&delivery.data);
-                print!("{}", msg.msg().unwrap());
-            }
-            if let Err(err) = self
-                .channel
-                .basic_ack(delivery.delivery_tag, BasicAckOptions::default())
-                .await
-            {
-                return Err(err);
+        while let Some(delivery) = self.recv.next().await {
+            match delivery {
+                Ok(delivery) => {
+                    if let Some(reply_to) = delivery.properties.reply_to() {
+                        self.send(reply_to.as_str(), &delivery.data).await?;
+                    } else {
+                        let msg = msg::get_root_as_message(&delivery.data);
+                        print!("{}", msg.msg().unwrap());
+                    }
+                    if let Err(err) = self
+                        .ch
+                        .basic_ack(delivery.delivery_tag, BasicAckOptions::default())
+                        .await
+                    {
+                        return Err(err);
+                    }
+                }
+                Err(err) => return Err(err),
             }
         }
         Ok(())
     }
-    async fn publish(&mut self, queue: &str, msg: &[u8]) -> Result<()> {
-        self.channel
+    async fn send(&mut self, queue: &str, msg: &[u8]) -> Result<()> {
+        self.ch
             .basic_publish(
                 "",
-                queue,
+                &queue,
                 BasicPublishOptions::default(),
                 msg.to_vec(),
                 BasicProperties::default(),
             )
             .await?;
-        //print!("{}", queue);
         Ok(())
     }
 }
