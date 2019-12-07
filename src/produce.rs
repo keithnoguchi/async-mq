@@ -6,7 +6,7 @@ use lapin::options::{
     BasicAckOptions, BasicConsumeOptions, BasicPublishOptions, QueueDeclareOptions,
 };
 use lapin::types::FieldTable;
-use lapin::{BasicProperties, Channel, Consumer, Result};
+use lapin::{BasicProperties, Result};
 
 /// ProducerBuilder builds the Producer.
 #[derive(Clone)]
@@ -92,9 +92,9 @@ impl ProducerBuilder {
 }
 
 pub struct Producer {
-    tx: Channel,
-    rx: Channel,
-    recv: Consumer,
+    tx: lapin::Channel,
+    rx: lapin::Channel,
+    recv: lapin::Consumer,
     ex: String,
     queue: String,
     properties: BasicProperties,
