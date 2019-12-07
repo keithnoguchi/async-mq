@@ -123,19 +123,9 @@ impl Publisher {
                 self.rx_props.clone(),
             )
             .await?;
-        if let Some(delivery) = self.consume.next().await {
-            match delivery {
-                Ok(delivery) => {
-                    let msg = msg::get_root_as_message(&delivery.data);
-                    eprint!("{}", msg.msg().unwrap());
-                    if let Err(err) = self
-                        .rx
-                        .basic_ack(delivery.delivery_tag, self.ack_opts.clone())
-                        .await
-                    {
-                        return Err(err);
-                    }
-                }
+        if let Some(msg) = self.consume.next().await {
+            match msg {
+                Ok(msg) => self.recv(msg).await?,
                 Err(err) => return Err(err),
             }
         }
@@ -151,5 +141,14 @@ impl Publisher {
                 self.tx_props.clone(),
             )
             .await
+    }
+    async fn recv(&mut self, msg: lapin::message::Delivery) -> lapin::Result<()> {
+        let delivery_tag = msg.delivery_tag;
+        let msg = msg::get_root_as_message(&msg.data);
+        eprint!("{}", msg.msg().unwrap());
+        if let Err(err) = self.rx.basic_ack(delivery_tag, self.ack_opts.clone()).await {
+            return Err(err);
+        }
+        Ok(())
     }
 }
