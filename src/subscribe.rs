@@ -31,12 +31,16 @@ impl SubscriberBuilder {
             consumer: Box::new(crate::consume::EchoConsumer {}),
         }
     }
-    pub fn exchange(&mut self, exchange: String) -> &Self {
+    pub fn exchange(&mut self, exchange: String) -> &mut Self {
         self.ex = exchange;
         self
     }
-    pub fn queue(&mut self, queue: String) -> &Self {
+    pub fn queue(&mut self, queue: String) -> &mut Self {
         self.queue = queue;
+        self
+    }
+    pub fn with_consumer(&mut self, consumer: Box<dyn crate::Consumer + Send>) -> &mut Self {
+        self.consumer = consumer;
         self
     }
     pub async fn build(&self) -> lapin::Result<Subscriber> {

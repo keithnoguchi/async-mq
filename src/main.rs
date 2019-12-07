@@ -1,10 +1,24 @@
 // SPDX-License-Identifier: GPL-2.0
+use async_trait::async_trait;
 use flatbuffers::FlatBufferBuilder;
 use futures_executor::{block_on, LocalPool, LocalSpawner};
 use futures_util::task::LocalSpawnExt;
 use lapin::Result;
-use rustmq::{Client, PublisherBuilder, SubscriberBuilder};
+use rustmq::{Client, Consumer, PublisherBuilder, SubscriberBuilder};
 use std::{env, thread};
+
+#[derive(Clone)]
+struct EchoConsumer;
+
+#[async_trait]
+impl Consumer for EchoConsumer {
+    async fn consume(&mut self, msg: Vec<u8>) -> lapin::Result<Vec<u8>> {
+        Ok(msg)
+    }
+    fn box_clone(&self) -> Box<dyn Consumer + Send> {
+        Box::new((*self).clone())
+    }
+}
 
 fn main() -> thread::Result<()> {
     let client = Client::new();
@@ -14,7 +28,9 @@ fn main() -> thread::Result<()> {
     // A single connection for the multiple consumers.
     let conn = block_on(client.connect(&uri)).expect("fail to connect");
     let mut builder = SubscriberBuilder::new(conn);
-    builder.queue(String::from(queue_name));
+    builder
+        .queue(String::from(queue_name))
+        .with_consumer(Box::new(EchoConsumer {}));
     let mut consumers = Vec::with_capacity(8);
     for _ in 0..consumers.capacity() {
         let builder = builder.clone();
