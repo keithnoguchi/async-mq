@@ -23,8 +23,8 @@ impl<'future> Consumer<'future> for NoopConsumer {
 pub struct EchoConsumer;
 
 impl<'future> Consumer<'future> for EchoConsumer {
-    type Output = lapin::Result<()>;
-    fn consume(_msg: Vec<u8>) -> BoxFuture<'future, Self::Output> {
-        async { Ok(()) }.boxed()
+    type Output = lapin::Result<Vec<u8>>;
+    fn consume(msg: Vec<u8>) -> BoxFuture<'future, Self::Output> {
+        async { Ok(msg) }.boxed()
     }
 }
