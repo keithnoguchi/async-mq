@@ -28,7 +28,7 @@ impl SubscriberBuilder {
             tx_opts: lapin::options::BasicPublishOptions::default(),
             rx_opts: lapin::options::BasicConsumeOptions::default(),
             ack_opts: lapin::options::BasicAckOptions::default(),
-            consumer: Box::new(crate::EchoConsumer {}),
+            consumer: Box::new(crate::consume::EchoConsumer {}),
         }
     }
     pub fn exchange(&mut self, exchange: String) -> &Self {
