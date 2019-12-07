@@ -90,6 +90,10 @@ pub struct Subscriber {
 }
 
 impl Subscriber {
+    pub fn with_consumer(&mut self, consumer: Box<dyn crate::Consumer + Send>) -> &mut Self {
+        self.consumer = consumer;
+        self
+    }
     pub async fn run(&mut self) -> lapin::Result<()> {
         while let Some(msg) = self.consume.next().await {
             match msg {
