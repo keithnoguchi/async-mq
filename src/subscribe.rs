@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 use crate::msg;
-use futures::future::BoxFuture;
-use futures_util::{future::FutureExt, stream::StreamExt};
+use futures_util::stream::StreamExt;
 
 #[derive(Clone)]
 pub struct SubscriberBuilder {
@@ -51,7 +50,7 @@ impl SubscriberBuilder {
             Ok((ch, q)) => (ch, q),
             Err(err) => return Err(err),
         };
-        let recv = match ch
+        let consume = match ch
             .clone()
             .basic_consume(
                 &q,
@@ -61,12 +60,12 @@ impl SubscriberBuilder {
             )
             .await
         {
-            Ok(recv) => recv,
+            Ok(c) => c,
             Err(err) => return Err(err),
         };
         Ok(Subscriber {
             ch,
-            recv,
+            consume,
             tx_props: self.tx_props.clone(),
             tx_opts: self.tx_opts.clone(),
             ack_opts: self.ack_opts.clone(),
@@ -76,7 +75,7 @@ impl SubscriberBuilder {
 
 pub struct Subscriber {
     ch: lapin::Channel,
-    recv: lapin::Consumer,
+    consume: lapin::Consumer,
     tx_props: lapin::BasicProperties,
     tx_opts: lapin::options::BasicPublishOptions,
     ack_opts: lapin::options::BasicAckOptions,
@@ -84,25 +83,27 @@ pub struct Subscriber {
 
 impl Subscriber {
     pub async fn run(&mut self) -> lapin::Result<()> {
-        while let Some(delivery) = self.recv.next().await {
-            match delivery {
-                Ok(delivery) => {
-                    if let Some(reply_to) = delivery.properties.reply_to() {
-                        self.send(reply_to.as_str(), &delivery.data).await?;
-                    } else {
-                        let msg = msg::get_root_as_message(&delivery.data);
-                        print!("{}", msg.msg().unwrap());
-                    }
-                    if let Err(err) = self
-                        .ch
-                        .basic_ack(delivery.delivery_tag, self.ack_opts.clone())
-                        .await
-                    {
-                        return Err(err);
-                    }
-                }
+        while let Some(msg) = self.consume.next().await {
+            match msg {
+                Ok(msg) => self.recv(msg).await?,
                 Err(err) => return Err(err),
             }
+        }
+        Ok(())
+    }
+    async fn recv(&mut self, msg: lapin::message::Delivery) -> lapin::Result<()> {
+        if let Some(reply_to) = msg.properties.reply_to() {
+            self.send(reply_to.as_str(), &msg.data).await?;
+        } else {
+            let msg = msg::get_root_as_message(&msg.data);
+            print!("{}", msg.msg().unwrap());
+        }
+        if let Err(err) = self
+            .ch
+            .basic_ack(msg.delivery_tag, self.ack_opts.clone())
+            .await
+        {
+            return Err(err);
         }
         Ok(())
     }
@@ -117,18 +118,5 @@ impl Subscriber {
             )
             .await?;
         Ok(())
-    }
-}
-
-pub trait Consumer<'future> {
-    fn consume(msg: Vec<u8>) -> BoxFuture<'future, lapin::Result<()>>;
-}
-
-#[allow(dead_code)]
-struct Noop;
-
-impl<'future> Consumer<'future> for Noop {
-    fn consume(_msg: Vec<u8>) -> BoxFuture<'future, lapin::Result<()>> {
-        async { Ok(()) }.boxed()
     }
 }
