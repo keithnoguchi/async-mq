@@ -107,21 +107,23 @@ fdfhgegihhjfikigjjlhkkmilnljmomkpnnlqoomprpnsqqotrrpussqvttruwusvxtvwyuwxvaxywby
 ## References
 
 - [The Async Book]: The Asynchronous Programming in Rust
+  - [Async in traits], [crate async-trait], and [why async fn in traits are hard]
 - [The Style Book]: The Rust Style Guidelines
 - [RabbitMQ]: The most widely deployed open source message broker
 - [Crate lapin]: RabbitMQ crate based on AMQP 0.9.1 specification
   - [Lapin futures v0.3 example]: [Crate futures v0.3] example
-- [Crate futures]:
-  - [Crate futures v0.3]: Abstructions for Asynchronous Programming
+- [Crate futures v0.3]: Abstructions for Asynchronous Programming
 - [Original futures design]: Original futures design by [Aaron Turon]
 
+[the async book]: https://rust-lang.github.io/async-book/
+[async in trait]: https://rust-lang.github.io/async-book/07_workarounds/06_async_in_traits.html
+[crate async-trait]: https://github.com/dtolnay/async-trait
+[why async fn in traits are hard]: https://smallcultfollowing.com/babysteps/blog/2019/10/26/async-fn-in-traits-are-hard/
+[the style book]: https://doc.rust-lang.org/1.0.0/style/README.html
 [RabbitMQ]: https://www.rabbitmq.com
 [crate lapin]: https://docs.rs/lapin/0.28.2/lapin/
 [lapin futures v0.3 example]: https://github.com/sozu-proxy/lapin/blob/master/examples/pubsub_futures.rs
 [crate lapin-futures]: https://docs.rs/lapin-futures/0.28.2/lapin_futures/
-[the async book]: https://rust-lang.github.io/async-book/
-[the style book]: https://doc.rust-lang.org/1.0.0/style/README.html
-[crate futures]: http://futures.rs/
 [crate futures v0.3]: https://docs.rs/futures/0.3.1/
 [original futures design]: https://aturon.github.io/blog/2016/09/07/futures-design/
 [Aaron Turon]: https://aturon.github.io/blog/
