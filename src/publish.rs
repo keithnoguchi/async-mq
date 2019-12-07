@@ -1,36 +1,32 @@
 // SPDX-License-Identifier: GPL-2.0
 //! produce module for Publisher and PublisherBuilder.
-use crate::{msg, Connection};
+use crate::msg;
 use futures::future::BoxFuture;
 use futures_util::{future::FutureExt, stream::StreamExt};
-use lapin::options::{
-    BasicAckOptions, BasicConsumeOptions, BasicPublishOptions, QueueDeclareOptions,
-};
-use lapin::types::FieldTable;
-use lapin::{BasicProperties, Result};
+use lapin;
 
 /// PublisherBuilder builds the Publisher.
 #[derive(Clone)]
 pub struct PublisherBuilder {
-    conn: Connection,
+    conn: crate::Connection,
     ex: String,
     queue: String,
-    queue_options: QueueDeclareOptions,
-    field_table: FieldTable,
-    properties: BasicProperties,
-    publish_options: BasicPublishOptions,
+    queue_options: lapin::options::QueueDeclareOptions,
+    field_table: lapin::types::FieldTable,
+    properties: lapin::BasicProperties,
+    publish_options: lapin::options::BasicPublishOptions,
 }
 
 impl PublisherBuilder {
-    pub fn new(conn: Connection) -> Self {
+    pub fn new(conn: crate::Connection) -> Self {
         Self {
             conn,
             ex: String::from(""),
             queue: String::from(""),
-            properties: BasicProperties::default(),
-            publish_options: BasicPublishOptions::default(),
-            queue_options: QueueDeclareOptions::default(),
-            field_table: FieldTable::default(),
+            properties: lapin::BasicProperties::default(),
+            publish_options: lapin::options::BasicPublishOptions::default(),
+            queue_options: lapin::options::QueueDeclareOptions::default(),
+            field_table: lapin::types::FieldTable::default(),
         }
     }
     pub fn exchange(&mut self, exchange: String) -> &Self {
@@ -41,7 +37,7 @@ impl PublisherBuilder {
         self.queue = queue;
         self
     }
-    pub async fn build(&self) -> Result<Publisher> {
+    pub async fn build(&self) -> lapin::Result<Publisher> {
         let tx = match self
             .conn
             .channel(
@@ -54,7 +50,7 @@ impl PublisherBuilder {
             Ok((ch, _)) => ch,
             Err(err) => return Err(err),
         };
-        let rx_opts = QueueDeclareOptions {
+        let rx_opts = lapin::options::QueueDeclareOptions {
             exclusive: true,
             auto_delete: true,
             ..self.queue_options.clone()
@@ -71,8 +67,8 @@ impl PublisherBuilder {
             .basic_consume(
                 &q,
                 "producer",
-                BasicConsumeOptions::default(),
-                FieldTable::default(),
+                lapin::options::BasicConsumeOptions::default(),
+                lapin::types::FieldTable::default(),
             )
             .await
         {
@@ -98,13 +94,13 @@ pub struct Publisher {
     recv: lapin::Consumer,
     ex: String,
     queue: String,
-    properties: BasicProperties,
-    rx_props: BasicProperties,
-    publish_options: BasicPublishOptions,
+    properties: lapin::BasicProperties,
+    rx_props: lapin::BasicProperties,
+    publish_options: lapin::options::BasicPublishOptions,
 }
 
 impl Publisher {
-    pub async fn rpc(&mut self, msg: Vec<u8>) -> Result<()> {
+    pub async fn rpc(&mut self, msg: Vec<u8>) -> lapin::Result<()> {
         self.tx
             .basic_publish(
                 &self.ex,
@@ -121,7 +117,10 @@ impl Publisher {
                     eprint!("{}", msg.msg().unwrap());
                     if let Err(err) = self
                         .rx
-                        .basic_ack(delivery.delivery_tag, BasicAckOptions::default())
+                        .basic_ack(
+                            delivery.delivery_tag,
+                            lapin::options::BasicAckOptions::default(),
+                        )
                         .await
                     {
                         return Err(err);
@@ -132,7 +131,7 @@ impl Publisher {
         }
         Ok(())
     }
-    pub async fn publish(&mut self, msg: Vec<u8>) -> Result<()> {
+    pub async fn publish(&mut self, msg: Vec<u8>) -> lapin::Result<()> {
         self.tx
             .basic_publish(
                 &self.ex,
