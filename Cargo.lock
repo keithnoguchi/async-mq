@@ -63,6 +63,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "async-trait"
+version = "0.1.21"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "proc-macro2 1.0.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "quote 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "syn 1.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "autocfg"
 version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -726,6 +736,7 @@ dependencies = [
 name = "rustmq"
 version = "0.3.0"
 dependencies = [
+ "async-trait 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)",
  "flatbuffers 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures-executor 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1001,6 +1012,7 @@ dependencies = [
 "checksum amq-protocol-types 3.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "a13489ba9891aac7f217c80ef10ead9e0219422d9af826bceb13a84346f75d0f"
 "checksum amq-protocol-uri 3.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "52e68b30bc7968ba7a013083e52d43429b1f253261a2960de6eb0905169e10f4"
 "checksum arrayvec 0.4.12 (registry+https://github.com/rust-lang/crates.io-index)" = "cd9fd44efafa8690358b7408d253adf110036b88f55672a933f01d616ad9b1b9"
+"checksum async-trait 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)" = "8b6dd385bb33043b833ba049048d57bdbb4d654a121ed68c71871ca51ff67070"
 "checksum autocfg 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)" = "1d49d90015b3c36167a20fe2810c5cd875ad504b39cff3d4eae7977e6b7c1cb2"
 "checksum bitflags 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "cf1de2fe8c75bc145a2f577add951f8134889b4795d47466a54a5c846d691693"
 "checksum block-buffer 0.7.3 (registry+https://github.com/rust-lang/crates.io-index)" = "c0940dc441f31689269e10ac70eb1002a3a1d3ad1390e030043662eb7fe4688b"

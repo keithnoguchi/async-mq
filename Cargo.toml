@@ -11,4 +11,5 @@ futures = "^0.3"
 futures-executor = "^0.3"
 futures-util = "^0.3"
 flatbuffers = "^0.6"
+async-trait = "^0.1"
 lapin = { version = "^0.28", features = ["futures"] }

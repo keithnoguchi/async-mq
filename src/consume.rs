@@ -1,30 +1,30 @@
 // SPDX-License-Identifier: GPL-2.0
 //! Consumer crate and the example consumer types.
-use futures::future::BoxFuture;
-use futures_util::future::FutureExt;
+use async_trait::async_trait;
 use lapin;
 
-pub trait Consumer<'future> {
-    type Output;
-    fn consume(&mut self, msg: Vec<u8>) -> BoxFuture<'future, Self::Output>;
+#[async_trait]
+pub trait Consumer {
+    async fn consume(&mut self, msg: Vec<u8>) -> lapin::Result<Vec<u8>>;
+    fn box_clone(&self) -> Box<dyn Consumer + Send>;
 }
 
-#[allow(dead_code)]
-pub struct NoopConsumer;
-
-impl<'future> Consumer<'future> for NoopConsumer {
-    type Output = lapin::Result<()>;
-    fn consume(&mut self, _msg: Vec<u8>) -> BoxFuture<'future, Self::Output> {
-        async { Ok(()) }.boxed()
+// https://users.rust-lang.org/t/solved-is-it-possible-to-clone-a-boxed-trait-object/1714/6
+impl Clone for Box<dyn Consumer + Send> {
+    fn clone(&self) -> Box<dyn Consumer + Send> {
+        self.box_clone()
     }
 }
 
-#[allow(dead_code)]
+#[derive(Clone)]
 pub struct EchoConsumer;
 
-impl<'future> Consumer<'future> for EchoConsumer {
-    type Output = lapin::Result<Vec<u8>>;
-    fn consume(&mut self, msg: Vec<u8>) -> BoxFuture<'future, Self::Output> {
-        async { Ok(msg) }.boxed()
+#[async_trait]
+impl Consumer for EchoConsumer {
+    async fn consume(&mut self, msg: Vec<u8>) -> lapin::Result<Vec<u8>> {
+        Ok(msg)
+    }
+    fn box_clone(&self) -> Box<dyn Consumer + Send> {
+        Box::new((*self).clone())
     }
 }

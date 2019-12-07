@@ -3,7 +3,7 @@ use crate::msg;
 use futures_util::stream::StreamExt;
 
 #[derive(Clone)]
-pub struct SubscriberBuilder<'future, T: crate::Consumer<'future>> {
+pub struct SubscriberBuilder {
     conn: crate::Connection,
     ex: String,
     queue: String,
@@ -13,13 +13,10 @@ pub struct SubscriberBuilder<'future, T: crate::Consumer<'future>> {
     tx_opts: lapin::options::BasicPublishOptions,
     rx_opts: lapin::options::BasicConsumeOptions,
     ack_opts: lapin::options::BasicAckOptions,
-    consumer: T,
+    consumer: Box<dyn crate::Consumer + Send>,
 }
 
-impl<'future, T> SubscriberBuilder<'future, T>
-where
-    T: crate::Consumer<'future>,
-{
+impl SubscriberBuilder {
     pub fn new(conn: crate::Connection) -> Self {
         Self {
             conn,
@@ -31,7 +28,7 @@ where
             tx_opts: lapin::options::BasicPublishOptions::default(),
             rx_opts: lapin::options::BasicConsumeOptions::default(),
             ack_opts: lapin::options::BasicAckOptions::default(),
-            consumer: crate::NoopConsumer::<'future>,
+            consumer: Box::new(crate::EchoConsumer {}),
         }
     }
     pub fn exchange(&mut self, exchange: String) -> &Self {
@@ -42,7 +39,7 @@ where
         self.queue = queue;
         self
     }
-    pub async fn build(&self) -> lapin::Result<Subscriber<'future, T>> {
+    pub async fn build(&self) -> lapin::Result<Subscriber> {
         let (ch, q) = match self
             .conn
             .channel(
@@ -68,30 +65,27 @@ where
             Ok(c) => c,
             Err(err) => return Err(err),
         };
-        Ok(Subscriber::<'future, T> {
+        Ok(Subscriber {
             ch,
             consume,
-            consumer: self.consumer,
             tx_props: self.tx_props.clone(),
             tx_opts: self.tx_opts.clone(),
             ack_opts: self.ack_opts.clone(),
+            _consumer: self.consumer.clone(),
         })
     }
 }
 
-pub struct Subscriber<'future, T: crate::Consumer<'future>> {
+pub struct Subscriber {
     ch: lapin::Channel,
     consume: lapin::Consumer,
-    consumer: T,
     tx_props: lapin::BasicProperties,
     tx_opts: lapin::options::BasicPublishOptions,
     ack_opts: lapin::options::BasicAckOptions,
+    _consumer: Box<dyn crate::Consumer + Send>,
 }
 
-impl<'future, T> Subscriber<'future, T>
-where
-    T: crate::Consumer<'future>,
-{
+impl Subscriber {
     pub async fn run(&mut self) -> lapin::Result<()> {
         while let Some(msg) = self.consume.next().await {
             match msg {
