@@ -3,7 +3,7 @@ use flatbuffers::FlatBufferBuilder;
 use futures_executor::{block_on, LocalPool, LocalSpawner};
 use futures_util::task::LocalSpawnExt;
 use lapin::Result;
-use rustmq::{Client, ConsumerBuilder, ProducerBuilder};
+use rustmq::{Client, PublisherBuilder, SubscriberBuilder};
 use std::{env, thread};
 
 fn main() -> thread::Result<()> {
@@ -13,7 +13,7 @@ fn main() -> thread::Result<()> {
 
     // A single connection for the multiple consumers.
     let conn = block_on(client.connect(&uri)).expect("fail to connect");
-    let mut builder = ConsumerBuilder::new(conn);
+    let mut builder = SubscriberBuilder::new(conn);
     builder.queue(String::from(queue_name));
     let mut consumers = Vec::with_capacity(8);
     for _ in 0..consumers.capacity() {
@@ -31,7 +31,7 @@ fn main() -> thread::Result<()> {
 
     // A single connection for the multiple producers.
     let conn = block_on(client.connect(&uri)).expect("fail to connect");
-    let mut builder = ProducerBuilder::new(conn);
+    let mut builder = PublisherBuilder::new(conn);
     builder.queue(String::from(queue_name));
     let mut producers = Vec::with_capacity(4);
     for _ in 0..producers.capacity() {
@@ -53,7 +53,7 @@ fn main() -> thread::Result<()> {
     Ok(())
 }
 
-fn producer(builder: ProducerBuilder) -> Result<()> {
+fn producer(builder: PublisherBuilder) -> Result<()> {
     let mut pool = LocalPool::new();
     pool.run_until(async move {
         let mut buf_builder = FlatBufferBuilder::new();
@@ -73,7 +73,7 @@ fn producer(builder: ProducerBuilder) -> Result<()> {
     })
 }
 
-async fn consumer(builder: ConsumerBuilder, spawner: LocalSpawner) {
+async fn consumer(builder: SubscriberBuilder, spawner: LocalSpawner) {
     for _ in 0usize..4 {
         let mut consumer = builder.build().await.expect("consumer built");
         let _task = spawner.spawn_local(async move {

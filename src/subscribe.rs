@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0
 use crate::msg;
 use futures_util::stream::StreamExt;
+use std::future::Future;
 
 #[derive(Clone)]
-pub struct ConsumerBuilder {
+pub struct SubscriberBuilder {
     conn: crate::Connection,
     ex: String,
     queue: String,
@@ -15,7 +16,7 @@ pub struct ConsumerBuilder {
     ack_opts: lapin::options::BasicAckOptions,
 }
 
-impl ConsumerBuilder {
+impl SubscriberBuilder {
     pub fn new(conn: crate::Connection) -> Self {
         Self {
             conn,
@@ -37,7 +38,7 @@ impl ConsumerBuilder {
         self.queue = queue;
         self
     }
-    pub async fn build(&self) -> lapin::Result<Consumer> {
+    pub async fn build(&self) -> lapin::Result<Subscriber> {
         let (ch, q) = match self
             .conn
             .channel(
@@ -63,7 +64,7 @@ impl ConsumerBuilder {
             Ok(recv) => recv,
             Err(err) => return Err(err),
         };
-        Ok(Consumer {
+        Ok(Subscriber {
             ch,
             recv,
             tx_props: self.tx_props.clone(),
@@ -73,7 +74,7 @@ impl ConsumerBuilder {
     }
 }
 
-pub struct Consumer {
+pub struct Subscriber {
     ch: lapin::Channel,
     recv: lapin::Consumer,
     tx_props: lapin::BasicProperties,
@@ -81,7 +82,7 @@ pub struct Consumer {
     ack_opts: lapin::options::BasicAckOptions,
 }
 
-impl Consumer {
+impl Subscriber {
     pub async fn run(&mut self) -> lapin::Result<()> {
         while let Some(delivery) = self.recv.next().await {
             match delivery {
@@ -117,4 +118,8 @@ impl Consumer {
             .await?;
         Ok(())
     }
+}
+
+pub trait Consumer<Output> {
+    fn consume(msg: Vec<u8>) -> Box<dyn Future<Output = Output>>;
 }

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0
-//! produce module for Producer and ProducerBuilder.
+//! produce module for Publisher and PublisherBuilder.
 use crate::{msg, Connection};
 use futures_util::stream::StreamExt;
 use lapin::options::{
@@ -7,10 +7,11 @@ use lapin::options::{
 };
 use lapin::types::FieldTable;
 use lapin::{BasicProperties, Result};
+use std::future::Future;
 
-/// ProducerBuilder builds the Producer.
+/// PublisherBuilder builds the Publisher.
 #[derive(Clone)]
-pub struct ProducerBuilder {
+pub struct PublisherBuilder {
     conn: Connection,
     ex: String,
     queue: String,
@@ -20,7 +21,7 @@ pub struct ProducerBuilder {
     publish_options: BasicPublishOptions,
 }
 
-impl ProducerBuilder {
+impl PublisherBuilder {
     pub fn new(conn: Connection) -> Self {
         Self {
             conn,
@@ -40,7 +41,7 @@ impl ProducerBuilder {
         self.queue = queue;
         self
     }
-    pub async fn build(&self) -> Result<Producer> {
+    pub async fn build(&self) -> Result<Publisher> {
         let tx = match self
             .conn
             .channel(
@@ -78,7 +79,7 @@ impl ProducerBuilder {
             Ok(recv) => recv,
             Err(err) => return Err(err),
         };
-        Ok(Producer {
+        Ok(Publisher {
             tx,
             rx,
             recv,
@@ -91,7 +92,7 @@ impl ProducerBuilder {
     }
 }
 
-pub struct Producer {
+pub struct Publisher {
     tx: lapin::Channel,
     rx: lapin::Channel,
     recv: lapin::Consumer,
@@ -102,7 +103,7 @@ pub struct Producer {
     publish_options: BasicPublishOptions,
 }
 
-impl Producer {
+impl Publisher {
     pub async fn rpc(&mut self, msg: Vec<u8>) -> Result<()> {
         self.tx
             .basic_publish(
@@ -142,4 +143,8 @@ impl Producer {
             )
             .await
     }
+}
+
+pub trait Producer<Output> {
+    fn receive(msg: Vec<u8>) -> Box<dyn Future<Output = Output>>;
 }
