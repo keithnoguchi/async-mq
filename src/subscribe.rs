@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 use crate::msg;
-use futures_util::stream::StreamExt;
-use std::future::Future;
+use futures::future::BoxFuture;
+use futures_util::{future::FutureExt, stream::StreamExt};
 
 #[derive(Clone)]
 pub struct SubscriberBuilder {
@@ -120,6 +120,15 @@ impl Subscriber {
     }
 }
 
-pub trait Consumer<Output> {
-    fn consume(msg: Vec<u8>) -> Box<dyn Future<Output = Output>>;
+pub trait Consumer<'future> {
+    fn consume(msg: Vec<u8>) -> BoxFuture<'future, lapin::Result<()>>;
+}
+
+#[allow(dead_code)]
+struct Noop;
+
+impl<'future> Consumer<'future> for Noop {
+    fn consume(_msg: Vec<u8>) -> BoxFuture<'future, lapin::Result<()>> {
+        async { Ok(()) }.boxed()
+    }
 }

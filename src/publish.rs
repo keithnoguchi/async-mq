@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: GPL-2.0
 //! produce module for Publisher and PublisherBuilder.
 use crate::{msg, Connection};
-use futures_util::stream::StreamExt;
+use futures::future::BoxFuture;
+use futures_util::{future::FutureExt, stream::StreamExt};
 use lapin::options::{
     BasicAckOptions, BasicConsumeOptions, BasicPublishOptions, QueueDeclareOptions,
 };
 use lapin::types::FieldTable;
 use lapin::{BasicProperties, Result};
-use std::future::Future;
 
 /// PublisherBuilder builds the Publisher.
 #[derive(Clone)]
@@ -145,6 +145,15 @@ impl Publisher {
     }
 }
 
-pub trait Producer<Output> {
-    fn receive(msg: Vec<u8>) -> Box<dyn Future<Output = Output>>;
+pub trait Producer<'future> {
+    fn receive(msg: Vec<u8>) -> BoxFuture<'future, lapin::Result<()>>;
+}
+
+#[allow(dead_code)]
+struct Printer;
+
+impl<'future> Producer<'future> for Printer {
+    fn receive(_msg: Vec<u8>) -> BoxFuture<'future, lapin::Result<()>> {
+        async { Ok(()) }.boxed()
+    }
 }
