@@ -10,10 +10,12 @@ pub struct PublisherBuilder {
     conn: crate::Connection,
     ex: String,
     queue: String,
-    queue_options: lapin::options::QueueDeclareOptions,
+    queue_opts: lapin::options::QueueDeclareOptions,
     field_table: lapin::types::FieldTable,
-    properties: lapin::BasicProperties,
-    publish_options: lapin::options::BasicPublishOptions,
+    tx_props: lapin::BasicProperties,
+    tx_opts: lapin::options::BasicPublishOptions,
+    rx_opts: lapin::options::BasicConsumeOptions,
+    ack_opts: lapin::options::BasicAckOptions,
 }
 
 impl PublisherBuilder {
@@ -22,17 +24,19 @@ impl PublisherBuilder {
             conn,
             ex: String::from(""),
             queue: String::from(""),
-            properties: lapin::BasicProperties::default(),
-            publish_options: lapin::options::BasicPublishOptions::default(),
-            queue_options: lapin::options::QueueDeclareOptions::default(),
+            queue_opts: lapin::options::QueueDeclareOptions::default(),
             field_table: lapin::types::FieldTable::default(),
+            tx_props: lapin::BasicProperties::default(),
+            tx_opts: lapin::options::BasicPublishOptions::default(),
+            rx_opts: lapin::options::BasicConsumeOptions::default(),
+            ack_opts: lapin::options::BasicAckOptions::default(),
         }
     }
-    pub fn exchange(&mut self, exchange: String) -> &Self {
+    pub fn exchange(&mut self, exchange: String) -> &mut Self {
         self.ex = exchange;
         self
     }
-    pub fn queue(&mut self, queue: String) -> &Self {
+    pub fn queue(&mut self, queue: String) -> &mut Self {
         self.queue = queue;
         self
     }
@@ -41,7 +45,7 @@ impl PublisherBuilder {
             .conn
             .channel(
                 &self.queue,
-                self.queue_options.clone(),
+                self.queue_opts.clone(),
                 self.field_table.clone(),
             )
             .await
@@ -49,16 +53,12 @@ impl PublisherBuilder {
             Ok((ch, _)) => ch,
             Err(err) => return Err(err),
         };
-        let rx_opts = lapin::options::QueueDeclareOptions {
+        let opts = lapin::options::QueueDeclareOptions {
             exclusive: true,
             auto_delete: true,
-            ..self.queue_options.clone()
+            ..self.queue_opts.clone()
         };
-        let (rx, q) = match self
-            .conn
-            .channel("", rx_opts, self.field_table.clone())
-            .await
-        {
+        let (rx, q) = match self.conn.channel("", opts, self.field_table.clone()).await {
             Ok((ch, q)) => (ch, q),
             Err(err) => return Err(err),
         };
@@ -66,8 +66,8 @@ impl PublisherBuilder {
             .basic_consume(
                 &q,
                 "producer",
-                lapin::options::BasicConsumeOptions::default(),
-                lapin::types::FieldTable::default(),
+                self.rx_opts.clone(),
+                self.field_table.clone(),
             )
             .await
         {
@@ -80,9 +80,10 @@ impl PublisherBuilder {
             recv,
             ex: self.ex.clone(),
             queue: self.queue.clone(),
-            properties: self.properties.clone(),
-            rx_props: self.properties.clone().with_reply_to(q.name().clone()),
-            publish_options: self.publish_options.clone(),
+            tx_props: self.tx_props.clone(),
+            rx_props: self.tx_props.clone().with_reply_to(q.name().clone()),
+            tx_opts: self.tx_opts.clone(),
+            ack_opts: self.ack_opts.clone(),
         })
     }
 }
@@ -93,9 +94,10 @@ pub struct Publisher {
     recv: lapin::Consumer,
     ex: String,
     queue: String,
-    properties: lapin::BasicProperties,
+    tx_props: lapin::BasicProperties,
     rx_props: lapin::BasicProperties,
-    publish_options: lapin::options::BasicPublishOptions,
+    tx_opts: lapin::options::BasicPublishOptions,
+    ack_opts: lapin::options::BasicAckOptions,
 }
 
 impl Publisher {
@@ -104,7 +106,7 @@ impl Publisher {
             .basic_publish(
                 &self.ex,
                 &self.queue,
-                self.publish_options.clone(),
+                self.tx_opts.clone(),
                 msg,
                 self.rx_props.clone(),
             )
@@ -116,10 +118,7 @@ impl Publisher {
                     eprint!("{}", msg.msg().unwrap());
                     if let Err(err) = self
                         .rx
-                        .basic_ack(
-                            delivery.delivery_tag,
-                            lapin::options::BasicAckOptions::default(),
-                        )
+                        .basic_ack(delivery.delivery_tag, self.ack_opts.clone())
                         .await
                     {
                         return Err(err);
@@ -135,9 +134,9 @@ impl Publisher {
             .basic_publish(
                 &self.ex,
                 &self.queue,
-                self.publish_options.clone(),
+                self.tx_opts.clone(),
                 msg,
-                self.properties.clone(),
+                self.tx_props.clone(),
             )
             .await
     }

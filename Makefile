@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-2.0
+# SPDX-License-Identifier: APACHE-2.0 AND MIT
 .PHONY: build check test clean run install doc doc-crate fmt lint
 all: fmt lint test
 build:
