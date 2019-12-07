@@ -106,10 +106,11 @@ fdfhgegihhjfikigjjlhkkmilnljmomkpnnlqoomprpnsqqotrrpussqvttruwusvxtvwyuwxvaxywby
 
 ## References
 
+- [The Async Book]: The Asynchronous Programming in Rust
+- [The Style Book]: The Rust Style Guidelines
 - [RabbitMQ]: The most widely deployed open source message broker
 - [Crate lapin]: RabbitMQ crate based on AMQP 0.9.1 specification
   - [Lapin futures v0.3 example]: [Crate futures v0.3] example
-- [The Async Book]: Asynchronous Programming in Rust
 - [Crate futures]:
   - [Crate futures v0.3]: Abstructions for Asynchronous Programming
 - [Original futures design]: Original futures design by [Aaron Turon]
@@ -119,6 +120,7 @@ fdfhgegihhjfikigjjlhkkmilnljmomkpnnlqoomprpnsqqotrrpussqvttruwusvxtvwyuwxvaxywby
 [lapin futures v0.3 example]: https://github.com/sozu-proxy/lapin/blob/master/examples/pubsub_futures.rs
 [crate lapin-futures]: https://docs.rs/lapin-futures/0.28.2/lapin_futures/
 [the async book]: https://rust-lang.github.io/async-book/
+[the style book]: https://doc.rust-lang.org/1.0.0/style/README.html
 [crate futures]: http://futures.rs/
 [crate futures v0.3]: https://docs.rs/futures/0.3.1/
 [original futures design]: https://aturon.github.io/blog/2016/09/07/futures-design/
