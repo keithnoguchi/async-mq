@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0
-//! Consumer crate and the example Noop consumer.
+//! Consumer crate and the example consumer types.
 use futures::future::BoxFuture;
 use futures_util::future::FutureExt;
 use lapin;
