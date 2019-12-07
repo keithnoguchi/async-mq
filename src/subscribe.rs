@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0
+// SPDX-License-Identifier: APACHE-2.0 AND MIT
 use crate::msg;
 use futures_util::stream::StreamExt;
+use lapin;
 
 #[derive(Clone)]
 pub struct SubscriberBuilder {

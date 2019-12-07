@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: GPL-2.0
-//! Consumer crate and the example consumer types.
+// SPDX-License-Identifier: APACHE-2.0 AND MIT
+//! Consumer trait and some example concrete types.
 use async_trait::async_trait;
 use lapin;
 

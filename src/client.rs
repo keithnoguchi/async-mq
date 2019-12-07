@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0
+// SPDX-License-Identifier: APACHE-2.0 AND MIT
 //! client module for the connection to the message queue broker.
 use lapin::options::QueueDeclareOptions;
 use lapin::types::FieldTable;
