@@ -68,7 +68,7 @@ impl PublisherBuilder {
             Ok((ch, q)) => (ch, q),
             Err(err) => return Err(err),
         };
-        let recv = match rx
+        let consume = match rx
             .basic_consume(
                 &q,
                 "producer",
@@ -77,13 +77,13 @@ impl PublisherBuilder {
             )
             .await
         {
-            Ok(recv) => recv,
+            Ok(c) => c,
             Err(err) => return Err(err),
         };
         Ok(Publisher {
             tx,
             rx,
-            recv,
+            consume,
             ex: self.ex.clone(),
             queue: self.queue.clone(),
             tx_props: self.tx_props.clone(),
@@ -98,7 +98,7 @@ impl PublisherBuilder {
 pub struct Publisher {
     tx: lapin::Channel,
     rx: lapin::Channel,
-    recv: lapin::Consumer,
+    consume: lapin::Consumer,
     ex: String,
     queue: String,
     tx_props: lapin::BasicProperties,
@@ -123,7 +123,7 @@ impl Publisher {
                 self.rx_props.clone(),
             )
             .await?;
-        if let Some(delivery) = self.recv.next().await {
+        if let Some(delivery) = self.consume.next().await {
             match delivery {
                 Ok(delivery) => {
                     let msg = msg::get_root_as_message(&delivery.data);
