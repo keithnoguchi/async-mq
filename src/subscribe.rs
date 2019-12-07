@@ -71,7 +71,7 @@ impl SubscriberBuilder {
             tx_props: self.tx_props.clone(),
             tx_opts: self.tx_opts.clone(),
             ack_opts: self.ack_opts.clone(),
-            _consumer: self.consumer.clone(),
+            consumer: self.consumer.clone(),
         })
     }
 }
@@ -82,7 +82,7 @@ pub struct Subscriber {
     tx_props: lapin::BasicProperties,
     tx_opts: lapin::options::BasicPublishOptions,
     ack_opts: lapin::options::BasicAckOptions,
-    _consumer: Box<dyn crate::Consumer + Send>,
+    consumer: Box<dyn crate::Consumer + Send>,
 }
 
 impl Subscriber {
@@ -96,18 +96,21 @@ impl Subscriber {
         Ok(())
     }
     async fn recv(&mut self, msg: lapin::message::Delivery) -> lapin::Result<()> {
-        if let Some(reply_to) = msg.properties.reply_to() {
-            self.send(reply_to.as_str(), &msg.data).await?;
-        } else {
-            let msg = msg::get_root_as_message(&msg.data);
-            print!("{}", msg.msg().unwrap());
-        }
-        if let Err(err) = self
-            .ch
-            .basic_ack(msg.delivery_tag, self.ack_opts.clone())
-            .await
-        {
-            return Err(err);
+        let delivery_tag = msg.delivery_tag;
+        let reply_to = msg.properties.reply_to();
+        match self.consumer.consume(msg.data).await {
+            Err(err) => return Err(err),
+            Ok(msg) => {
+                if let Some(reply_to) = reply_to {
+                    self.send(reply_to.as_str(), &msg).await?;
+                } else {
+                    let msg = msg::get_root_as_message(&msg);
+                    print!("{}", msg.msg().unwrap());
+                }
+                if let Err(err) = self.ch.basic_ack(delivery_tag, self.ack_opts.clone()).await {
+                    return Err(err);
+                }
+            }
         }
         Ok(())
     }
