@@ -16,6 +16,7 @@ pub struct PublisherBuilder {
     tx_opts: lapin::options::BasicPublishOptions,
     rx_opts: lapin::options::BasicConsumeOptions,
     ack_opts: lapin::options::BasicAckOptions,
+    producer: Box<dyn crate::Producer + Send>,
 }
 
 impl PublisherBuilder {
@@ -30,6 +31,7 @@ impl PublisherBuilder {
             tx_opts: lapin::options::BasicPublishOptions::default(),
             rx_opts: lapin::options::BasicConsumeOptions::default(),
             ack_opts: lapin::options::BasicAckOptions::default(),
+            producer: Box::new(crate::produce::DumpProducer {}),
         }
     }
     pub fn exchange(&mut self, exchange: String) -> &mut Self {
@@ -38,6 +40,10 @@ impl PublisherBuilder {
     }
     pub fn queue(&mut self, queue: String) -> &mut Self {
         self.queue = queue;
+        self
+    }
+    pub fn with_producer(&mut self, producer: Box<dyn crate::Producer + Send>) -> &mut Self {
+        self.producer = producer;
         self
     }
     pub async fn build(&self) -> lapin::Result<Publisher> {
@@ -84,6 +90,7 @@ impl PublisherBuilder {
             rx_props: self.tx_props.clone().with_reply_to(q.name().clone()),
             tx_opts: self.tx_opts.clone(),
             ack_opts: self.ack_opts.clone(),
+            producer: self.producer.clone(),
         })
     }
 }
@@ -98,9 +105,14 @@ pub struct Publisher {
     rx_props: lapin::BasicProperties,
     tx_opts: lapin::options::BasicPublishOptions,
     ack_opts: lapin::options::BasicAckOptions,
+    producer: Box<dyn crate::Producer + Send>,
 }
 
 impl Publisher {
+    pub fn with_producer(&mut self, producer: Box<dyn crate::Producer + Send>) -> &mut Self {
+        self.producer = producer;
+        self
+    }
     pub async fn rpc(&mut self, msg: Vec<u8>) -> lapin::Result<()> {
         self.tx
             .basic_publish(
