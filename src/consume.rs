@@ -1,30 +1,32 @@
 // SPDX-License-Identifier: GPL-2.0
-use crate::{msg, Connection};
+use crate::msg;
 use futures_util::stream::StreamExt;
-use lapin::options::{
-    BasicAckOptions, BasicConsumeOptions, BasicPublishOptions, QueueDeclareOptions,
-};
-use lapin::types::FieldTable;
-use lapin::{BasicProperties, Result};
-use std::default::Default;
 
 #[derive(Clone)]
 pub struct ConsumerBuilder {
-    conn: Connection,
+    conn: crate::Connection,
     ex: String,
     queue: String,
-    queue_options: QueueDeclareOptions,
-    field_table: FieldTable,
+    queue_opts: lapin::options::QueueDeclareOptions,
+    field_table: lapin::types::FieldTable,
+    tx_props: lapin::BasicProperties,
+    tx_opts: lapin::options::BasicPublishOptions,
+    rx_opts: lapin::options::BasicConsumeOptions,
+    ack_opts: lapin::options::BasicAckOptions,
 }
 
 impl ConsumerBuilder {
-    pub fn new(conn: Connection) -> Self {
+    pub fn new(conn: crate::Connection) -> Self {
         Self {
             conn,
             ex: String::from(""),
             queue: String::from(""),
-            queue_options: QueueDeclareOptions::default(),
-            field_table: FieldTable::default(),
+            queue_opts: lapin::options::QueueDeclareOptions::default(),
+            field_table: lapin::types::FieldTable::default(),
+            tx_props: lapin::BasicProperties::default(),
+            tx_opts: lapin::options::BasicPublishOptions::default(),
+            rx_opts: lapin::options::BasicConsumeOptions::default(),
+            ack_opts: lapin::options::BasicAckOptions::default(),
         }
     }
     pub fn exchange(&mut self, exchange: String) -> &Self {
@@ -35,12 +37,12 @@ impl ConsumerBuilder {
         self.queue = queue;
         self
     }
-    pub async fn build(&self) -> Result<Consumer> {
+    pub async fn build(&self) -> lapin::Result<Consumer> {
         let (ch, q) = match self
             .conn
             .channel(
                 &self.queue,
-                self.queue_options.clone(),
+                self.queue_opts.clone(),
                 self.field_table.clone(),
             )
             .await
@@ -53,25 +55,34 @@ impl ConsumerBuilder {
             .basic_consume(
                 &q,
                 "consumer",
-                BasicConsumeOptions::default(),
-                FieldTable::default(),
+                self.rx_opts.clone(),
+                self.field_table.clone(),
             )
             .await
         {
             Ok(recv) => recv,
             Err(err) => return Err(err),
         };
-        Ok(Consumer { ch, recv })
+        Ok(Consumer {
+            ch,
+            recv,
+            tx_props: self.tx_props.clone(),
+            tx_opts: self.tx_opts.clone(),
+            ack_opts: self.ack_opts.clone(),
+        })
     }
 }
 
 pub struct Consumer {
     ch: lapin::Channel,
     recv: lapin::Consumer,
+    tx_props: lapin::BasicProperties,
+    tx_opts: lapin::options::BasicPublishOptions,
+    ack_opts: lapin::options::BasicAckOptions,
 }
 
 impl Consumer {
-    pub async fn run(&mut self) -> Result<()> {
+    pub async fn run(&mut self) -> lapin::Result<()> {
         while let Some(delivery) = self.recv.next().await {
             match delivery {
                 Ok(delivery) => {
@@ -83,7 +94,7 @@ impl Consumer {
                     }
                     if let Err(err) = self
                         .ch
-                        .basic_ack(delivery.delivery_tag, BasicAckOptions::default())
+                        .basic_ack(delivery.delivery_tag, self.ack_opts.clone())
                         .await
                     {
                         return Err(err);
@@ -94,14 +105,14 @@ impl Consumer {
         }
         Ok(())
     }
-    async fn send(&mut self, queue: &str, msg: &[u8]) -> Result<()> {
+    async fn send(&mut self, queue: &str, msg: &[u8]) -> lapin::Result<()> {
         self.ch
             .basic_publish(
                 "",
                 &queue,
-                BasicPublishOptions::default(),
+                self.tx_opts.clone(),
                 msg.to_vec(),
-                BasicProperties::default(),
+                self.tx_props.clone(),
             )
             .await?;
         Ok(())
