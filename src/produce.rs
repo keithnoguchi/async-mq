@@ -42,7 +42,7 @@ impl ProducerBuilder {
         self.queue = queue;
         self
     }
-    pub fn with_producer(&mut self, producer: Box<dyn crate::ProducerExt + Send>) -> &mut Self {
+    pub fn with_ext(&mut self, producer: Box<dyn crate::ProducerExt + Send>) -> &mut Self {
         self.producer = producer;
         self
     }
@@ -109,7 +109,7 @@ pub struct Producer {
 }
 
 impl Producer {
-    pub fn with_producer(&mut self, producer: Box<dyn crate::ProducerExt + Send>) -> &mut Self {
+    pub fn with_ext(&mut self, producer: Box<dyn crate::ProducerExt + Send>) -> &mut Self {
         self.producer = producer;
         self
     }

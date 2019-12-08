@@ -48,7 +48,7 @@ impl LocalConsumerManager {
         let spawner = self.spawner.clone();
         self.spawner
             .spawn_local(async move {
-                builder.with_handler(Box::new(EchoConsumerHandler {}));
+                builder.with_ext(Box::new(EchoConsumerHandler {}));
                 for _ in 0..consumers {
                     let mut consumer = builder.build().await.expect("consumer build failed");
                     let _task = spawner.spawn_local(async move {
@@ -122,7 +122,7 @@ fn producer(builder: ProducerBuilder) -> Result<()> {
     pool.run_until(async move {
         let mut buf_builder = FlatBufferBuilder::new();
         let mut p = builder.build().await?;
-        p.with_producer(Box::new(FlatBufferEchoProducer {}));
+        p.with_ext(Box::new(FlatBufferEchoProducer {}));
         loop {
             for data in { b'a'..b'z' } {
                 let data = buf_builder.create_string(&String::from_utf8(vec![data]).unwrap());
