@@ -4,8 +4,25 @@ use flatbuffers::FlatBufferBuilder;
 use futures_executor::{block_on, LocalPool, LocalSpawner};
 use futures_util::task::LocalSpawnExt;
 use lapin::Result;
-use rustmq::{Client, Consumer, PublisherBuilder, SubscriberBuilder};
+use rustmq::{Client, Consumer, Producer, PublisherBuilder, SubscriberBuilder};
 use std::{env, thread};
+
+#[derive(Clone)]
+pub struct FlatbufferDumpProducer;
+
+#[async_trait]
+impl Producer for FlatbufferDumpProducer {
+    async fn recv(&mut self, msg: Vec<u8>) -> lapin::Result<()> {
+        let msg = rustmq::get_root_as_message(&msg);
+        if let Some(msg) = msg.msg() {
+            eprint!("{}", msg);
+        }
+        Ok(())
+    }
+    fn box_clone(&self) -> Box<dyn Producer + Send> {
+        Box::new((*self).clone())
+    }
+}
 
 #[derive(Clone)]
 struct EchoConsumer;
@@ -72,6 +89,7 @@ fn producer(builder: PublisherBuilder) -> Result<()> {
     pool.run_until(async move {
         let mut buf_builder = FlatBufferBuilder::new();
         let mut p = builder.build().await?;
+        p.with_producer(Box::new(FlatbufferDumpProducer {}));
         loop {
             for data in { b'a'..b'z' } {
                 let data = buf_builder.create_string(&String::from_utf8(vec![data]).unwrap());
@@ -89,10 +107,9 @@ fn producer(builder: PublisherBuilder) -> Result<()> {
 
 async fn consumer(builder: SubscriberBuilder, spawner: LocalSpawner) {
     for _ in 0usize..4 {
-        let mut consumer = builder.build().await.expect("consumer built");
+        let mut c = builder.build().await.expect("fail to build subscriber");
         let _task = spawner.spawn_local(async move {
-            consumer
-                .with_consumer(Box::new(EchoConsumer {}))
+            c.with_consumer(Box::new(EchoConsumer {}))
                 .run()
                 .await
                 .expect("consumer died");
