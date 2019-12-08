@@ -86,7 +86,7 @@ pub struct FlatBufferPrinter;
 
 #[async_trait]
 impl ProducerExt for FlatBufferPrinter {
-    async fn recv(&mut self, msg: Vec<u8>) -> lapin::Result<()> {
+    async fn peek(&mut self, msg: Vec<u8>) -> lapin::Result<()> {
         let msg = crate::msg::get_root_as_message(&msg);
         if let Some(msg) = msg.msg() {
             eprint!("{}", msg);

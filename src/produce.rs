@@ -161,7 +161,7 @@ impl Producer {
     }
     async fn recv(&mut self, msg: lapin::message::Delivery) -> lapin::Result<()> {
         let delivery_tag = msg.delivery_tag;
-        if let Ok(()) = self.extension.recv(msg.data).await {
+        if let Ok(()) = self.extension.peek(msg.data).await {
             if let Err(err) = self.rx.basic_ack(delivery_tag, self.ack_opts.clone()).await {
                 return Err(err);
             }
@@ -175,7 +175,7 @@ impl Producer {
 /// [Producer]: struct.Producer.html
 #[async_trait]
 pub trait ProducerExt {
-    async fn recv(&mut self, msg: Vec<u8>) -> lapin::Result<()>;
+    async fn peek(&mut self, msg: Vec<u8>) -> lapin::Result<()>;
     fn box_clone(&self) -> Box<dyn ProducerExt + Send>;
 }
 
@@ -195,7 +195,7 @@ pub struct DebugPrinter;
 
 #[async_trait]
 impl ProducerExt for DebugPrinter {
-    async fn recv(&mut self, msg: Vec<u8>) -> lapin::Result<()> {
+    async fn peek(&mut self, msg: Vec<u8>) -> lapin::Result<()> {
         eprintln!("{:?}", msg);
         Ok(())
     }
