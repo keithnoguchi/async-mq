@@ -24,11 +24,34 @@ impl rustmq::Producer for FlatBufferEchoProducer {
     }
 }
 
+struct LocalConsumers {
+    consumers: usize,
+    spawner: LocalSpawner,
+}
+
+impl LocalConsumers {
+    fn new(consumers: usize, spawner: LocalSpawner) -> Self {
+        Self { consumers, spawner }
+    }
+    async fn run(self, mut builder: SubscriberBuilder) {
+        for _ in 0..self.consumers {
+            let mut s = builder
+                .with_consumer(Box::new(ConsumerHandler {}))
+                .build()
+                .await
+                .expect("consumer build failed");
+            let _task = self.spawner.spawn_local(async move {
+                s.run().await.expect("consumer died");
+            });
+        }
+    }
+}
+
 #[derive(Clone)]
-struct EchoConsumer;
+struct ConsumerHandler;
 
 #[async_trait]
-impl rustmq::Consumer for EchoConsumer {
+impl rustmq::Consumer for ConsumerHandler {
     async fn consume(&mut self, msg: Vec<u8>) -> lapin::Result<Vec<u8>> {
         Ok(msg)
     }
@@ -41,24 +64,6 @@ fn main() -> thread::Result<()> {
     let client = Client::new();
     let uri = parse();
     let queue_name = "hello";
-
-    // A single connection for the multiple consumers.
-    let conn = block_on(client.connect(&uri)).expect("fail to connect");
-    let mut builder = SubscriberBuilder::new(conn);
-    builder.queue(String::from(queue_name));
-    let mut consumers = Vec::with_capacity(8);
-    for _ in 0..consumers.capacity() {
-        let builder = builder.clone();
-        let consumer = thread::spawn(move || {
-            let mut pool = LocalPool::new();
-            let spawner = pool.spawner();
-            spawner
-                .spawn_local(consumer(builder, spawner.clone()))
-                .expect("consumers died");
-            pool.run()
-        });
-        consumers.push(consumer);
-    }
 
     // A single connection for the multiple producers.
     let conn = block_on(client.connect(&uri)).expect("fail to connect");
@@ -73,13 +78,31 @@ fn main() -> thread::Result<()> {
         producers.push(producer);
     }
 
-    while !consumers.is_empty() {
-        let consumer = consumers.pop().unwrap();
-        consumer.join()?;
+    // A single connection for the multiple consumers.
+    let conn = block_on(client.connect(&uri)).expect("fail to connect");
+    let mut builder = SubscriberBuilder::new(conn);
+    builder.queue(String::from(queue_name));
+    let mut consumers = Vec::with_capacity(8);
+    for _ in 0..consumers.capacity() {
+        let builder = builder.clone();
+        let consumer = thread::spawn(move || {
+            let mut pool = LocalPool::new();
+            let spawner = pool.spawner();
+            let c = LocalConsumers::new(4, spawner.clone());
+            spawner.spawn_local(c.run(builder)).expect("consumers died");
+            pool.run()
+        });
+        consumers.push(consumer);
     }
+
+    // Cleanup all instances.
     while !producers.is_empty() {
         let producer = producers.pop().unwrap();
         producer.join()?;
+    }
+    while !consumers.is_empty() {
+        let consumer = consumers.pop().unwrap();
+        consumer.join()?;
     }
     Ok(())
 }
@@ -103,18 +126,6 @@ fn producer(builder: PublisherBuilder) -> Result<()> {
             }
         }
     })
-}
-
-async fn consumer(builder: SubscriberBuilder, spawner: LocalSpawner) {
-    for _ in 0usize..4 {
-        let mut c = builder.build().await.expect("fail to build subscriber");
-        let _task = spawner.spawn_local(async move {
-            c.with_consumer(Box::new(EchoConsumer {}))
-                .run()
-                .await
-                .expect("consumer died");
-        });
-    }
 }
 
 fn parse() -> String {
