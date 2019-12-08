@@ -11,7 +11,7 @@ use std::{env, thread};
 pub struct FlatBufferEchoProducer;
 
 #[async_trait]
-impl rustmq::Producer for FlatBufferEchoProducer {
+impl rustmq::ProducerExt for FlatBufferEchoProducer {
     async fn recv(&mut self, msg: Vec<u8>) -> lapin::Result<()> {
         let msg = crate::msg::get_root_as_message(&msg);
         if let Some(msg) = msg.msg() {
@@ -19,7 +19,7 @@ impl rustmq::Producer for FlatBufferEchoProducer {
         }
         Ok(())
     }
-    fn box_clone(&self) -> Box<dyn rustmq::Producer + Send> {
+    fn box_clone(&self) -> Box<dyn rustmq::ProducerExt + Send> {
         Box::new((*self).clone())
     }
 }
@@ -48,7 +48,7 @@ impl LocalConsumerManager {
         let spawner = self.spawner.clone();
         self.spawner
             .spawn_local(async move {
-                builder.with_handler(Box::new(ConsumerHandler {}));
+                builder.with_handler(Box::new(EchoConsumerHandler {}));
                 for _ in 0..consumers {
                     let mut consumer = builder.build().await.expect("consumer build failed");
                     let _task = spawner.spawn_local(async move {
@@ -62,10 +62,10 @@ impl LocalConsumerManager {
 }
 
 #[derive(Clone)]
-struct ConsumerHandler;
+struct EchoConsumerHandler;
 
 #[async_trait]
-impl rustmq::ConsumerExt for ConsumerHandler {
+impl rustmq::ConsumerExt for EchoConsumerHandler {
     async fn consume(&mut self, msg: Vec<u8>) -> lapin::Result<Vec<u8>> {
         Ok(msg)
     }

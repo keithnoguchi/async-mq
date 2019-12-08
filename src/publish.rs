@@ -15,7 +15,7 @@ pub struct PublisherBuilder {
     tx_opts: lapin::options::BasicPublishOptions,
     rx_opts: lapin::options::BasicConsumeOptions,
     ack_opts: lapin::options::BasicAckOptions,
-    producer: Box<dyn crate::Producer + Send>,
+    producer: Box<dyn crate::ProducerExt + Send>,
 }
 
 impl PublisherBuilder {
@@ -41,7 +41,7 @@ impl PublisherBuilder {
         self.queue = queue;
         self
     }
-    pub fn with_producer(&mut self, producer: Box<dyn crate::Producer + Send>) -> &mut Self {
+    pub fn with_producer(&mut self, producer: Box<dyn crate::ProducerExt + Send>) -> &mut Self {
         self.producer = producer;
         self
     }
@@ -104,11 +104,11 @@ pub struct Publisher {
     rx_props: lapin::BasicProperties,
     tx_opts: lapin::options::BasicPublishOptions,
     ack_opts: lapin::options::BasicAckOptions,
-    producer: Box<dyn crate::Producer + Send>,
+    producer: Box<dyn crate::ProducerExt + Send>,
 }
 
 impl Publisher {
-    pub fn with_producer(&mut self, producer: Box<dyn crate::Producer + Send>) -> &mut Self {
+    pub fn with_producer(&mut self, producer: Box<dyn crate::ProducerExt + Send>) -> &mut Self {
         self.producer = producer;
         self
     }

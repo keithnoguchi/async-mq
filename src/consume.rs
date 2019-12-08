@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: APACHE-2.0 AND MIT
-//! Consumer, ConsumerBuilder and ConsumerExt trait.
+//! Consumer, ConsumerBuilder, and ConsumerExt trait.
 use async_trait::async_trait;
 use futures_util::stream::StreamExt;
 use lapin;
@@ -150,7 +150,7 @@ impl Clone for Box<dyn ConsumerExt + Send> {
 }
 
 #[derive(Clone)]
-pub struct EchoConsumer;
+struct EchoConsumer;
 
 #[async_trait]
 impl ConsumerExt for EchoConsumer {
