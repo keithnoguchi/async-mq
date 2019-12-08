@@ -1,6 +1,8 @@
 # rustmq
 
-[RabbitMQ] with [Crate lapin] for fun.
+Zero-cost [lapin] abstraction crate
+
+[lapin]: https://crates.io/crates/lapin
 
 [![DroneCI]](https://cloud.drone.io/keithnoguchi/rustmq)
 [![CircleCI]](https://circleci.com/gh/keithnoguchi/workflows/rustmq)
@@ -21,17 +23,17 @@
 
 ## Example
 
-Currently, [main.rs] demonstrates the [crate lapin] RabbitMQ RPC pattern
-with the Rust 1.39 [async-await] feature.  It creates 32 producer threads
-and 8 consumer threads, with each thread runs 8 consumer [async-await]
-instances.  It also uses [FlatBuffers] as a message encoding technology.
-Currently, it just generate simple message with a single string, from
-'a' to 'z'.
+Currently, [main.rs] demonstrates the RabbitMQ RPC pattern
+through the Rust 1.39 [async-await] feature with [lapin].
+It creates 32 producer threads and 8 consumer threads, with each
+thread runs 8 consumer [async-await] instances.  It also uses
+[FlatBuffers] for the message encoding.
 
 [main.rs]: src/main.rs
 [async-await]: https://blog.rust-lang.org/2019/11/07/Async-await-stable.html
 
-Here is the main function:
+Here is the main function which creates threads both the producers
+and consumers:
 
 ```sh
 fn main() -> thread::Result<()> {
@@ -78,8 +80,7 @@ fn main() -> thread::Result<()> {
 }
 ```
 
-Here are the producer side data structures.  `ASCIIGenerator` and `FlatBufferPrinter`,
-`ProducerExt` concrete type:
+Here are the producer side of the structures:
 
 ```sh
 struct ASCIIGenerator {
@@ -131,8 +132,7 @@ impl rustmq::ProducerExt for FlatBufferPrinter {
 }
 ```
 
-And finally, here are the consumer side data structures.  `LocalConsumerManager`
-and `EchoMessage`, `ConsumerExt` concrete type:
+And are the consumer side:
 
 ```sh
 struct LocalConsumerManager {
@@ -188,11 +188,11 @@ impl rustmq::ConsumerExt for EchoMessage {
 
 ## Execution
 
-Here is the output of the make run, e.g. cargo run.  It dumps printable ascii characters
-out to the stderr.
+Here is the output of the cargo run.  It dumps printable ascii
+characters to the stderr.
 
 ```sh
-air1$ make run
+$ cargo run
    Compiling rustmq v0.3.0 (/home/kei/git/rustmq)
     Finished dev [unoptimized + debuginfo] target(s) in 1.63s
      Running `target/debug/rustmq`
