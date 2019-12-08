@@ -13,7 +13,7 @@ pub struct SubscriberBuilder {
     tx_opts: lapin::options::BasicPublishOptions,
     rx_opts: lapin::options::BasicConsumeOptions,
     ack_opts: lapin::options::BasicAckOptions,
-    consumer: Box<dyn crate::Consumer + Send>,
+    consumer: Box<dyn crate::ConsumerExt + Send>,
 }
 
 impl SubscriberBuilder {
@@ -39,7 +39,7 @@ impl SubscriberBuilder {
         self.queue = queue;
         self
     }
-    pub fn with_consumer(&mut self, consumer: Box<dyn crate::Consumer + Send>) -> &mut Self {
+    pub fn with_consumer(&mut self, consumer: Box<dyn crate::ConsumerExt + Send>) -> &mut Self {
         self.consumer = consumer;
         self
     }
@@ -86,11 +86,11 @@ pub struct Subscriber {
     tx_props: lapin::BasicProperties,
     tx_opts: lapin::options::BasicPublishOptions,
     ack_opts: lapin::options::BasicAckOptions,
-    consumer: Box<dyn crate::Consumer + Send>,
+    consumer: Box<dyn crate::ConsumerExt + Send>,
 }
 
 impl Subscriber {
-    pub fn with_consumer(&mut self, consumer: Box<dyn crate::Consumer + Send>) -> &mut Self {
+    pub fn with_consumer(&mut self, consumer: Box<dyn crate::ConsumerExt + Send>) -> &mut Self {
         self.consumer = consumer;
         self
     }

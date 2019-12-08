@@ -48,11 +48,11 @@ impl LocalConsumers {
 struct ConsumerHandler;
 
 #[async_trait]
-impl rustmq::Consumer for ConsumerHandler {
+impl rustmq::ConsumerExt for ConsumerHandler {
     async fn consume(&mut self, msg: Vec<u8>) -> lapin::Result<Vec<u8>> {
         Ok(msg)
     }
-    fn box_clone(&self) -> Box<dyn rustmq::Consumer + Send> {
+    fn box_clone(&self) -> Box<dyn rustmq::ConsumerExt + Send> {
         Box::new((*self).clone())
     }
 }
