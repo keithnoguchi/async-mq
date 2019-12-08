@@ -99,7 +99,7 @@ pub struct BufferPeeker;
 
 #[async_trait]
 impl ProducerExt for BufferPeeker {
-    async fn peek(&mut self, msg: Vec<u8>) -> lapin::Result<(Vec<u8>)> {
+    async fn peek(&mut self, msg: Vec<u8>) -> lapin::Result<Vec<u8>> {
         // Nothing to do now.
         Ok(msg)
     }
