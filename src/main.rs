@@ -59,38 +59,48 @@ impl ASCIIGenerator {
         Self { builder }
     }
     fn run(&mut self) -> Result<()> {
-        let builder = self.builder.clone();
+        let mut builder = self.builder.clone();
+        builder.with_ext(Box::new(BufferPeeker {}));
         let mut pool = LocalPool::new();
         pool.run_until(async move {
-            let mut buf_builder = FlatBufferBuilder::new();
-            let mut p = builder.build().await?;
-            p.with_ext(Box::new(FlatBufferPeeker {}));
+            let mut producer = builder.build().await?;
+            let mut builder = FlatBufferBuilder::new();
             loop {
+                // Generate ASCII character FlatBuffer messages
+                // and print the received message to stderr.
                 for data in { b'!'..b'~' } {
-                    let data = buf_builder.create_string(&String::from_utf8(vec![data]).unwrap());
-                    let mut mb = crate::msg::MessageBuilder::new(&mut buf_builder);
-                    mb.add_msg(data);
-                    let msg = mb.finish();
-                    buf_builder.finish(msg, None);
-                    let req = buf_builder.finished_data();
-                    let resp = p.rpc(req.to_vec()).await?;
-                    buf_builder.reset();
-                    let resp = crate::msg::get_root_as_message(&resp);
-                    if let Some(resp) = resp.msg() {
-                        eprint!("{}", resp);
-                    }
+                    let req = self.make_buf(&mut builder, vec![data]);
+                    let resp = producer.rpc(req).await?;
+                    self.print_buf(resp);
                 }
             }
         })
     }
+    fn make_buf(&self, builder: &mut FlatBufferBuilder, data: Vec<u8>) -> Vec<u8> {
+        let data = builder.create_string(&String::from_utf8(data).unwrap());
+        let mut mb = crate::msg::MessageBuilder::new(builder);
+        mb.add_msg(data);
+        let msg = mb.finish();
+        builder.finish(msg, None);
+        let req = builder.finished_data().to_vec();
+        builder.reset();
+        req
+    }
+    fn print_buf(&self, resp: Vec<u8>) {
+        let msg = crate::msg::get_root_as_message(&resp);
+        if let Some(data) = msg.msg() {
+            eprint!("{}", data);
+        }
+    }
 }
 
 #[derive(Clone)]
-pub struct FlatBufferPeeker;
+pub struct BufferPeeker;
 
 #[async_trait]
-impl ProducerExt for FlatBufferPeeker {
+impl ProducerExt for BufferPeeker {
     async fn peek(&mut self, msg: Vec<u8>) -> lapin::Result<(Vec<u8>)> {
+        // Nothing to do now.
         Ok(msg)
     }
     fn box_clone(&self) -> Box<dyn ProducerExt + Send> {
