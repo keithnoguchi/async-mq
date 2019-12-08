@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: APACHE-2.0 AND MIT
-//! Zero-cost [lapin] abstraction crate
+//! Zero-cost [lapin] abstraction [AMQP] client crate
 //!
 //! [lapin]: https://crates.io/crates/lapin
+//! [amqp]: https://www.amqp.org
 pub use client::{Client, Connection};
 pub use consume::{Consumer, ConsumerBuilder, ConsumerExt};
 pub use produce::{Producer, ProducerBuilder, ProducerExt};

@@ -1,8 +1,9 @@
 # rustmq
 
-Zero-cost [lapin] abstraction crate
+Zero-cost [lapin] abstraction [AMQP] client crate
 
 [lapin]: https://crates.io/crates/lapin
+[amqp]: https://www.amqp.org
 
 [![DroneCI]](https://cloud.drone.io/keithnoguchi/rustmq)
 [![CircleCI]](https://circleci.com/gh/keithnoguchi/workflows/rustmq)
