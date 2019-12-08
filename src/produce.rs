@@ -16,7 +16,7 @@ pub struct ProducerBuilder {
     tx_opts: lapin::options::BasicPublishOptions,
     rx_opts: lapin::options::BasicConsumeOptions,
     ack_opts: lapin::options::BasicAckOptions,
-    producer: Box<dyn crate::ProducerExt + Send>,
+    extension: Box<dyn crate::ProducerExt + Send>,
 }
 
 impl ProducerBuilder {
@@ -31,7 +31,7 @@ impl ProducerBuilder {
             tx_opts: lapin::options::BasicPublishOptions::default(),
             rx_opts: lapin::options::BasicConsumeOptions::default(),
             ack_opts: lapin::options::BasicAckOptions::default(),
-            producer: Box::new(crate::produce::DebugPrintProducer {}),
+            extension: Box::new(crate::produce::DebugPrintProducer {}),
         }
     }
     pub fn exchange(&mut self, exchange: String) -> &mut Self {
@@ -42,8 +42,8 @@ impl ProducerBuilder {
         self.queue = queue;
         self
     }
-    pub fn with_ext(&mut self, producer: Box<dyn crate::ProducerExt + Send>) -> &mut Self {
-        self.producer = producer;
+    pub fn with_ext(&mut self, extension: Box<dyn crate::ProducerExt + Send>) -> &mut Self {
+        self.extension = extension;
         self
     }
     pub async fn build(&self) -> lapin::Result<Producer> {
@@ -90,7 +90,7 @@ impl ProducerBuilder {
             rx_props: self.tx_props.clone().with_reply_to(q.name().clone()),
             tx_opts: self.tx_opts.clone(),
             ack_opts: self.ack_opts.clone(),
-            producer: self.producer.clone(),
+            extension: self.extension.clone(),
         })
     }
 }
@@ -105,12 +105,12 @@ pub struct Producer {
     rx_props: lapin::BasicProperties,
     tx_opts: lapin::options::BasicPublishOptions,
     ack_opts: lapin::options::BasicAckOptions,
-    producer: Box<dyn crate::ProducerExt + Send>,
+    extension: Box<dyn crate::ProducerExt + Send>,
 }
 
 impl Producer {
-    pub fn with_ext(&mut self, producer: Box<dyn crate::ProducerExt + Send>) -> &mut Self {
-        self.producer = producer;
+    pub fn with_ext(&mut self, extension: Box<dyn crate::ProducerExt + Send>) -> &mut Self {
+        self.extension = extension;
         self
     }
     pub async fn rpc(&mut self, msg: Vec<u8>) -> lapin::Result<()> {
@@ -144,7 +144,7 @@ impl Producer {
     }
     async fn recv(&mut self, msg: lapin::message::Delivery) -> lapin::Result<()> {
         let delivery_tag = msg.delivery_tag;
-        if let Ok(()) = self.producer.recv(msg.data).await {
+        if let Ok(()) = self.extension.recv(msg.data).await {
             if let Err(err) = self.rx.basic_ack(delivery_tag, self.ack_opts.clone()).await {
                 return Err(err);
             }

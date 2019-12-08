@@ -15,7 +15,7 @@ pub struct ConsumerBuilder {
     tx_opts: lapin::options::BasicPublishOptions,
     rx_opts: lapin::options::BasicConsumeOptions,
     ack_opts: lapin::options::BasicAckOptions,
-    consumer: Box<dyn crate::ConsumerExt + Send>,
+    extension: Box<dyn crate::ConsumerExt + Send>,
 }
 
 impl ConsumerBuilder {
@@ -30,7 +30,7 @@ impl ConsumerBuilder {
             tx_opts: lapin::options::BasicPublishOptions::default(),
             rx_opts: lapin::options::BasicConsumeOptions::default(),
             ack_opts: lapin::options::BasicAckOptions::default(),
-            consumer: Box::new(crate::consume::EchoConsumer {}),
+            extension: Box::new(crate::consume::EchoConsumer {}),
         }
     }
     pub fn exchange(&mut self, exchange: String) -> &mut Self {
@@ -41,8 +41,8 @@ impl ConsumerBuilder {
         self.queue = queue;
         self
     }
-    pub fn with_ext(&mut self, consumer: Box<dyn crate::ConsumerExt + Send>) -> &mut Self {
-        self.consumer = consumer;
+    pub fn with_ext(&mut self, extension: Box<dyn crate::ConsumerExt + Send>) -> &mut Self {
+        self.extension = extension;
         self
     }
     pub async fn build(&self) -> lapin::Result<Consumer> {
@@ -77,7 +77,7 @@ impl ConsumerBuilder {
             tx_props: self.tx_props.clone(),
             tx_opts: self.tx_opts.clone(),
             ack_opts: self.ack_opts.clone(),
-            consumer: self.consumer.clone(),
+            extension: self.extension.clone(),
         })
     }
 }
@@ -88,12 +88,12 @@ pub struct Consumer {
     tx_props: lapin::BasicProperties,
     tx_opts: lapin::options::BasicPublishOptions,
     ack_opts: lapin::options::BasicAckOptions,
-    consumer: Box<dyn crate::ConsumerExt + Send>,
+    extension: Box<dyn crate::ConsumerExt + Send>,
 }
 
 impl Consumer {
-    pub fn with_ext(&mut self, consumer: Box<dyn crate::ConsumerExt + Send>) -> &mut Self {
-        self.consumer = consumer;
+    pub fn with_ext(&mut self, extension: Box<dyn crate::ConsumerExt + Send>) -> &mut Self {
+        self.extension = extension;
         self
     }
     pub async fn run(&mut self) -> lapin::Result<()> {
@@ -108,7 +108,7 @@ impl Consumer {
     async fn recv(&mut self, msg: lapin::message::Delivery) -> lapin::Result<()> {
         let delivery_tag = msg.delivery_tag;
         let reply_to = msg.properties.reply_to();
-        match self.consumer.recv(msg.data).await {
+        match self.extension.recv(msg.data).await {
             Err(err) => return Err(err),
             Ok(msg) => {
                 if let Some(reply_to) = reply_to {
