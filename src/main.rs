@@ -4,7 +4,7 @@ use flatbuffers::FlatBufferBuilder;
 use futures_executor::{block_on, LocalPool, LocalSpawner};
 use futures_util::task::LocalSpawnExt;
 use lapin::Result;
-use rustmq::{Client, MessageBuilder, PublisherBuilder, SubscriberBuilder};
+use rustmq::{Client, PublisherBuilder, SubscriberBuilder};
 use std::{env, thread};
 
 #[derive(Clone)]
@@ -13,7 +13,7 @@ pub struct FlatBufferEchoProducer;
 #[async_trait]
 impl rustmq::Producer for FlatBufferEchoProducer {
     async fn recv(&mut self, msg: Vec<u8>) -> lapin::Result<()> {
-        let msg = rustmq::get_root_as_message(&msg);
+        let msg = crate::msg::get_root_as_message(&msg);
         if let Some(msg) = msg.msg() {
             eprint!("{}", msg);
         }
@@ -93,7 +93,7 @@ fn producer(builder: PublisherBuilder) -> Result<()> {
         loop {
             for data in { b'a'..b'z' } {
                 let data = buf_builder.create_string(&String::from_utf8(vec![data]).unwrap());
-                let mut mb = MessageBuilder::new(&mut buf_builder);
+                let mut mb = crate::msg::MessageBuilder::new(&mut buf_builder);
                 mb.add_msg(data);
                 let msg = mb.finish();
                 buf_builder.finish(msg, None);
@@ -124,4 +124,66 @@ fn parse() -> String {
     let cluster = env::var("AMQP_CLUSTER").unwrap_or_default();
     let vhost = env::var("AMQP_VHOST").unwrap_or_default();
     format!("{}://{}:{}@{}/{}", scheme, user, pass, cluster, vhost)
+}
+
+mod msg {
+    #![allow(
+        unused_imports,
+        clippy::extra_unused_lifetimes,
+        clippy::needless_lifetimes,
+        clippy::redundant_closure,
+        clippy::redundant_static_lifetimes
+    )]
+    include!("../schema/model_generated.rs");
+
+    pub use model::get_root_as_message;
+    pub use model::{Message, MessageArgs, MessageBuilder, MessageType};
+
+    #[cfg(test)]
+    mod tests {
+        use flatbuffers::FlatBufferBuilder;
+        #[test]
+        fn message_create() {
+            use super::get_root_as_message;
+            use super::{Message, MessageArgs, MessageType};
+            let msgs = ["a", "b", "c", "d"];
+            for msg in &msgs {
+                let mut b = FlatBufferBuilder::new();
+                let bmsg = b.create_string(msg);
+                let data = Message::create(
+                    &mut b,
+                    &MessageArgs {
+                        msg: Some(bmsg),
+                        ..Default::default()
+                    },
+                );
+                b.finish(data, None);
+                let buf = b.finished_data();
+                let got = get_root_as_message(buf);
+                assert_eq!(msg, &got.msg().unwrap());
+                assert_eq!(0, got.id());
+                assert_eq!(MessageType::Hello, got.msg_type());
+                println!("mesg = {:?}", got);
+            }
+        }
+        #[test]
+        fn message_builder() {
+            use super::get_root_as_message;
+            use super::MessageType;
+            let mut b = FlatBufferBuilder::new();
+            let bmsg = b.create_string("a");
+            let mut mb = super::MessageBuilder::new(&mut b);
+            mb.add_id(1000);
+            mb.add_msg(bmsg);
+            mb.add_msg_type(super::MessageType::Goodbye);
+            let data = mb.finish();
+            b.finish(data, None);
+            let buf = b.finished_data();
+            let got = get_root_as_message(buf);
+            assert_eq!("a", got.msg().unwrap());
+            assert_eq!(1000, got.id());
+            assert_eq!(MessageType::Goodbye, got.msg_type());
+            println!("msg = {:?}", got);
+        }
+    }
 }

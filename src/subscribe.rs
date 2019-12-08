@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: APACHE-2.0 AND MIT
-use crate::msg;
 use futures_util::stream::StreamExt;
 use lapin;
 
@@ -113,8 +112,7 @@ impl Subscriber {
                 if let Some(reply_to) = reply_to {
                     self.send(reply_to.as_str(), &msg).await?;
                 } else {
-                    let msg = msg::get_root_as_message(&msg);
-                    print!("{}", msg.msg().unwrap());
+                    eprint!("{:?}", msg);
                 }
                 if let Err(err) = self.ch.basic_ack(delivery_tag, self.ack_opts.clone()).await {
                     return Err(err);
