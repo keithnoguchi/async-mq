@@ -4,7 +4,7 @@ use flatbuffers::FlatBufferBuilder;
 use futures_executor::{block_on, LocalPool, LocalSpawner};
 use futures_util::task::LocalSpawnExt;
 use lapin::Result;
-use rustmq::{Client, PublisherBuilder, SubscriberBuilder};
+use rustmq::{Client, ConsumerBuilder, PublisherBuilder};
 use std::{env, thread};
 
 #[derive(Clone)]
@@ -33,7 +33,7 @@ impl LocalConsumers {
     fn new(consumers: usize, spawner: LocalSpawner) -> Self {
         Self { consumers, spawner }
     }
-    async fn run(self, mut builder: SubscriberBuilder) {
+    async fn run(self, mut builder: ConsumerBuilder) {
         builder.with_consumer(Box::new(ConsumerHandler {}));
         for _ in 0..self.consumers {
             let mut s = builder.build().await.expect("consumer build failed");
@@ -77,7 +77,7 @@ fn main() -> thread::Result<()> {
 
     // A single connection for the multiple consumers.
     let conn = block_on(client.connect(&uri)).expect("fail to connect");
-    let mut builder = SubscriberBuilder::new(conn);
+    let mut builder = ConsumerBuilder::new(conn);
     builder.queue(String::from(queue_name));
     let mut consumers = Vec::with_capacity(8);
     for _ in 0..consumers.capacity() {

@@ -5,7 +5,7 @@ use futures_util::stream::StreamExt;
 use lapin;
 
 #[derive(Clone)]
-pub struct SubscriberBuilder {
+pub struct ConsumerBuilder {
     conn: crate::Connection,
     ex: String,
     queue: String,
@@ -18,7 +18,7 @@ pub struct SubscriberBuilder {
     consumer: Box<dyn crate::ConsumerExt + Send>,
 }
 
-impl SubscriberBuilder {
+impl ConsumerBuilder {
     pub fn new(conn: crate::Connection) -> Self {
         Self {
             conn,
@@ -45,7 +45,7 @@ impl SubscriberBuilder {
         self.consumer = consumer;
         self
     }
-    pub async fn build(&self) -> lapin::Result<Subscriber> {
+    pub async fn build(&self) -> lapin::Result<Consumer> {
         let (ch, q) = match self
             .conn
             .channel(
@@ -71,7 +71,7 @@ impl SubscriberBuilder {
             Ok(c) => c,
             Err(err) => return Err(err),
         };
-        Ok(Subscriber {
+        Ok(Consumer {
             ch,
             consume,
             tx_props: self.tx_props.clone(),
@@ -82,7 +82,7 @@ impl SubscriberBuilder {
     }
 }
 
-pub struct Subscriber {
+pub struct Consumer {
     ch: lapin::Channel,
     consume: lapin::Consumer,
     tx_props: lapin::BasicProperties,
@@ -91,7 +91,7 @@ pub struct Subscriber {
     consumer: Box<dyn crate::ConsumerExt + Send>,
 }
 
-impl Subscriber {
+impl Consumer {
     pub fn with_consumer(&mut self, consumer: Box<dyn crate::ConsumerExt + Send>) -> &mut Self {
         self.consumer = consumer;
         self
