@@ -9,8 +9,8 @@ use std::{env, thread};
 
 fn main() -> thread::Result<()> {
     let client = Client::new();
-    let uri = parse();
     let queue_name = "hello";
+    let uri = parse();
 
     // A single connection for the multiple producers.
     let conn = block_on(client.connect(&uri)).expect("fail to connect");
@@ -66,7 +66,7 @@ impl ASCIIGenerator {
             let mut p = builder.build().await?;
             p.with_ext(Box::new(FlatBufferPrinter {}));
             loop {
-                for data in { b'a'..b'z' } {
+                for data in { b'!'..b'~' } {
                     let data = buf_builder.create_string(&String::from_utf8(vec![data]).unwrap());
                     let mut mb = crate::msg::MessageBuilder::new(&mut buf_builder);
                     mb.add_msg(data);
