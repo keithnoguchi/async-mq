@@ -50,9 +50,8 @@ impl ConsumerBuilder {
         self.queue = queue;
         self
     }
-    /// Override the default [EchoMessenger] [ConsumerExt] trait object.
+    /// Use the provided [ConsumerExt] trait object.
     ///
-    /// [EchoMessenger]: struct.EchoMessenger.html
     /// [ConsumerExt]: trait.ConsumerExt.html
     pub fn with_ext(&mut self, extension: Box<dyn crate::ConsumerExt + Send>) -> &mut Self {
         self.extension = extension;
@@ -108,9 +107,8 @@ pub struct Consumer {
 }
 
 impl Consumer {
-    /// Override the default [EchoMessenger] [ConsumerExt] trait object.
+    /// Use the provided [ConsumerExt] trait object.
     ///
-    /// [EchoMessenger]: struct.EchoMessenger.html
     /// [ConsumerExt]: trait.ConsumerExt.html
     pub fn with_ext(&mut self, extension: Box<dyn crate::ConsumerExt + Send>) -> &mut Self {
         self.extension = extension;

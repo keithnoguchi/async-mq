@@ -64,7 +64,7 @@ impl ASCIIGenerator {
         pool.run_until(async move {
             let mut buf_builder = FlatBufferBuilder::new();
             let mut p = builder.build().await?;
-            p.with_ext(Box::new(FlatBufferPrinter {}));
+            p.with_ext(Box::new(FlatBufferPeeker {}));
             loop {
                 for data in { b'!'..b'~' } {
                     let data = buf_builder.create_string(&String::from_utf8(vec![data]).unwrap());
@@ -72,9 +72,13 @@ impl ASCIIGenerator {
                     mb.add_msg(data);
                     let msg = mb.finish();
                     buf_builder.finish(msg, None);
-                    let msg = buf_builder.finished_data();
-                    p.rpc(msg.to_vec()).await?;
+                    let req = buf_builder.finished_data();
+                    let resp = p.rpc(req.to_vec()).await?;
                     buf_builder.reset();
+                    let resp = crate::msg::get_root_as_message(&resp);
+                    if let Some(resp) = resp.msg() {
+                        eprint!("{}", resp);
+                    }
                 }
             }
         })
@@ -82,16 +86,12 @@ impl ASCIIGenerator {
 }
 
 #[derive(Clone)]
-pub struct FlatBufferPrinter;
+pub struct FlatBufferPeeker;
 
 #[async_trait]
-impl ProducerExt for FlatBufferPrinter {
-    async fn peek(&mut self, msg: Vec<u8>) -> lapin::Result<()> {
-        let msg = crate::msg::get_root_as_message(&msg);
-        if let Some(msg) = msg.msg() {
-            eprint!("{}", msg);
-        }
-        Ok(())
+impl ProducerExt for FlatBufferPeeker {
+    async fn peek(&mut self, msg: Vec<u8>) -> lapin::Result<(Vec<u8>)> {
+        Ok(msg)
     }
     fn box_clone(&self) -> Box<dyn ProducerExt + Send> {
         Box::new((*self).clone())

@@ -22,6 +22,7 @@ pub struct ProducerBuilder {
     tx_opts: lapin::options::BasicPublishOptions,
     rx_opts: lapin::options::BasicConsumeOptions,
     ack_opts: lapin::options::BasicAckOptions,
+    nack_opts: lapin::options::BasicNackOptions,
     extension: Box<dyn crate::ProducerExt + Send>,
 }
 
@@ -37,7 +38,8 @@ impl ProducerBuilder {
             tx_opts: lapin::options::BasicPublishOptions::default(),
             rx_opts: lapin::options::BasicConsumeOptions::default(),
             ack_opts: lapin::options::BasicAckOptions::default(),
-            extension: Box::new(crate::produce::DebugPrinter {}),
+            nack_opts: lapin::options::BasicNackOptions::default(),
+            extension: Box::new(crate::produce::NoopPeeker {}),
         }
     }
     pub fn exchange(&mut self, exchange: String) -> &mut Self {
@@ -48,9 +50,8 @@ impl ProducerBuilder {
         self.queue = queue;
         self
     }
-    /// Override the default [DebugPrinter] [ProducerExt] trait object.
+    /// Use the provided [ProducerExt] trait object.
     ///
-    /// [DebugPrinter]: struct.DebugPrinter.html
     /// [ProducerExt]: trait.ProducerExt.html
     pub fn with_ext(&mut self, extension: Box<dyn crate::ProducerExt + Send>) -> &mut Self {
         self.extension = extension;
@@ -100,6 +101,7 @@ impl ProducerBuilder {
             rx_props: self.tx_props.clone().with_reply_to(q.name().clone()),
             tx_opts: self.tx_opts.clone(),
             ack_opts: self.ack_opts.clone(),
+            nack_opts: self.nack_opts.clone(),
             extension: self.extension.clone(),
         })
     }
@@ -118,35 +120,17 @@ pub struct Producer {
     rx_props: lapin::BasicProperties,
     tx_opts: lapin::options::BasicPublishOptions,
     ack_opts: lapin::options::BasicAckOptions,
+    nack_opts: lapin::options::BasicNackOptions,
     extension: Box<dyn crate::ProducerExt + Send>,
 }
 
 impl Producer {
-    /// Override the default [DebugPrinter] [ProducerExt] trait object.
+    /// Use the provided [ProducerExt] trait object.
     ///
-    /// [DebugPrinter]: struct.DebugPrinter.html
     /// [ProducerExt]: trait.ProducerExt.html
     pub fn with_ext(&mut self, extension: Box<dyn crate::ProducerExt + Send>) -> &mut Self {
         self.extension = extension;
         self
-    }
-    pub async fn rpc(&mut self, msg: Vec<u8>) -> lapin::Result<()> {
-        self.tx
-            .basic_publish(
-                &self.ex,
-                &self.queue,
-                self.tx_opts.clone(),
-                msg,
-                self.rx_props.clone(),
-            )
-            .await?;
-        if let Some(msg) = self.consume.next().await {
-            match msg {
-                Ok(msg) => self.recv(msg).await?,
-                Err(err) => return Err(err),
-            }
-        }
-        Ok(())
     }
     pub async fn publish(&mut self, msg: Vec<u8>) -> lapin::Result<()> {
         self.tx
@@ -159,14 +143,51 @@ impl Producer {
             )
             .await
     }
-    async fn recv(&mut self, msg: lapin::message::Delivery) -> lapin::Result<()> {
-        let delivery_tag = msg.delivery_tag;
-        if let Ok(()) = self.extension.peek(msg.data).await {
-            if let Err(err) = self.rx.basic_ack(delivery_tag, self.ack_opts.clone()).await {
-                return Err(err);
+    pub async fn rpc(&mut self, msg: Vec<u8>) -> lapin::Result<Vec<u8>> {
+        if let Err(err) = self
+            .tx
+            .basic_publish(
+                &self.ex,
+                &self.queue,
+                self.tx_opts.clone(),
+                msg,
+                self.rx_props.clone(),
+            )
+            .await
+        {
+            return Err(err);
+        }
+        if let Some(msg) = self.consume.next().await {
+            match msg {
+                Ok(msg) => match self.recv(msg).await {
+                    Ok(msg) => return Ok(msg),
+                    Err(err) => return Err(err),
+                },
+                Err(err) => return Err(err),
             }
         }
-        Ok(())
+        Ok(vec![])
+    }
+    async fn recv(&mut self, msg: lapin::message::Delivery) -> lapin::Result<Vec<u8>> {
+        let delivery_tag = msg.delivery_tag;
+        match self.extension.peek(msg.data).await {
+            Ok(msg) => {
+                if let Err(err) = self.rx.basic_ack(delivery_tag, self.ack_opts.clone()).await {
+                    return Err(err);
+                }
+                Ok(msg)
+            }
+            Err(_err) => {
+                if let Err(err) = self
+                    .rx
+                    .basic_nack(delivery_tag, self.nack_opts.clone())
+                    .await
+                {
+                    return Err(err);
+                }
+                Ok(vec![])
+            }
+        }
     }
 }
 
@@ -175,7 +196,7 @@ impl Producer {
 /// [Producer]: struct.Producer.html
 #[async_trait]
 pub trait ProducerExt {
-    async fn peek(&mut self, msg: Vec<u8>) -> lapin::Result<()>;
+    async fn peek(&mut self, msg: Vec<u8>) -> lapin::Result<Vec<u8>>;
     fn box_clone(&self) -> Box<dyn ProducerExt + Send>;
 }
 
@@ -186,18 +207,17 @@ impl Clone for Box<dyn ProducerExt + Send> {
     }
 }
 
-/// A default [ProducerExt] implementor that prints out the received
-/// message to `stderr`.
+/// A default [ProducerExt] implementor that just nothing to do
+/// with the received message.
 ///
 /// [ProducerExt]: trait.ProducerExt.html
 #[derive(Clone)]
-pub struct DebugPrinter;
+pub struct NoopPeeker;
 
 #[async_trait]
-impl ProducerExt for DebugPrinter {
-    async fn peek(&mut self, msg: Vec<u8>) -> lapin::Result<()> {
-        eprintln!("{:?}", msg);
-        Ok(())
+impl ProducerExt for NoopPeeker {
+    async fn peek(&mut self, msg: Vec<u8>) -> lapin::Result<Vec<u8>> {
+        Ok(msg)
     }
     fn box_clone(&self) -> Box<dyn ProducerExt + Send> {
         Box::new((*self).clone())
