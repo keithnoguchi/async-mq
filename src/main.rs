@@ -7,73 +7,6 @@ use lapin::Result;
 use rustmq::{Client, ConsumerBuilder, ProducerBuilder};
 use std::{env, thread};
 
-#[derive(Clone)]
-pub struct FlatBufferEchoProducer;
-
-#[async_trait]
-impl rustmq::ProducerExt for FlatBufferEchoProducer {
-    async fn recv(&mut self, msg: Vec<u8>) -> lapin::Result<()> {
-        let msg = crate::msg::get_root_as_message(&msg);
-        if let Some(msg) = msg.msg() {
-            eprint!("{}", msg);
-        }
-        Ok(())
-    }
-    fn box_clone(&self) -> Box<dyn rustmq::ProducerExt + Send> {
-        Box::new((*self).clone())
-    }
-}
-
-struct LocalConsumerManager {
-    builder: ConsumerBuilder,
-    consumers: usize,
-    pool: LocalPool,
-    spawner: LocalSpawner,
-}
-
-impl LocalConsumerManager {
-    fn new(builder: rustmq::ConsumerBuilder, consumers: usize) -> Self {
-        let pool = LocalPool::new();
-        let spawner = pool.spawner();
-        Self {
-            builder,
-            consumers,
-            pool,
-            spawner,
-        }
-    }
-    fn run(mut self) {
-        let mut builder = self.builder.clone();
-        let consumers = self.consumers;
-        let spawner = self.spawner.clone();
-        self.spawner
-            .spawn_local(async move {
-                builder.with_ext(Box::new(EchoConsumerHandler {}));
-                for _ in 0..consumers {
-                    let mut consumer = builder.build().await.expect("consumer build failed");
-                    let _task = spawner.spawn_local(async move {
-                        consumer.run().await.expect("consumer died");
-                    });
-                }
-            })
-            .expect("consumer manager died");
-        self.pool.run();
-    }
-}
-
-#[derive(Clone)]
-struct EchoConsumerHandler;
-
-#[async_trait]
-impl rustmq::ConsumerExt for EchoConsumerHandler {
-    async fn recv(&mut self, msg: Vec<u8>) -> lapin::Result<Vec<u8>> {
-        Ok(msg)
-    }
-    fn box_clone(&self) -> Box<dyn rustmq::ConsumerExt + Send> {
-        Box::new((*self).clone())
-    }
-}
-
 fn main() -> thread::Result<()> {
     let client = Client::new();
     let uri = parse();
@@ -122,7 +55,7 @@ fn producer(builder: ProducerBuilder) -> Result<()> {
     pool.run_until(async move {
         let mut buf_builder = FlatBufferBuilder::new();
         let mut p = builder.build().await?;
-        p.with_ext(Box::new(FlatBufferEchoProducer {}));
+        p.with_ext(Box::new(FlatBufferPrinter {}));
         loop {
             for data in { b'a'..b'z' } {
                 let data = buf_builder.create_string(&String::from_utf8(vec![data]).unwrap());
@@ -136,6 +69,73 @@ fn producer(builder: ProducerBuilder) -> Result<()> {
             }
         }
     })
+}
+
+#[derive(Clone)]
+pub struct FlatBufferPrinter;
+
+#[async_trait]
+impl rustmq::ProducerExt for FlatBufferPrinter {
+    async fn recv(&mut self, msg: Vec<u8>) -> lapin::Result<()> {
+        let msg = crate::msg::get_root_as_message(&msg);
+        if let Some(msg) = msg.msg() {
+            eprint!("{}", msg);
+        }
+        Ok(())
+    }
+    fn box_clone(&self) -> Box<dyn rustmq::ProducerExt + Send> {
+        Box::new((*self).clone())
+    }
+}
+
+struct LocalConsumerManager {
+    builder: ConsumerBuilder,
+    consumers: usize,
+    pool: LocalPool,
+    spawner: LocalSpawner,
+}
+
+impl LocalConsumerManager {
+    fn new(builder: rustmq::ConsumerBuilder, consumers: usize) -> Self {
+        let pool = LocalPool::new();
+        let spawner = pool.spawner();
+        Self {
+            builder,
+            consumers,
+            pool,
+            spawner,
+        }
+    }
+    fn run(mut self) {
+        let mut builder = self.builder.clone();
+        let consumers = self.consumers;
+        let spawner = self.spawner.clone();
+        self.spawner
+            .spawn_local(async move {
+                builder.with_ext(Box::new(EchoMessage {}));
+                for _ in 0..consumers {
+                    let mut consumer = builder.build().await.expect("consumer build failed");
+                    let _task = spawner.spawn_local(async move {
+                        consumer.run().await.expect("consumer died");
+                    });
+                }
+            })
+            .expect("consumer manager died");
+        self.pool.run();
+    }
+}
+
+#[derive(Clone)]
+struct EchoMessage;
+
+#[async_trait]
+impl rustmq::ConsumerExt for EchoMessage {
+    async fn recv(&mut self, msg: Vec<u8>) -> lapin::Result<Vec<u8>> {
+        Ok(msg)
+    }
+    fn box_clone(&self) -> Box<dyn rustmq::ConsumerExt + Send> {
+        Box::new((*self).clone())
+    }
 }
 
 const TOTAL_PRODUCER_NR: usize = 32;

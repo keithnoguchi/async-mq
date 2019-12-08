@@ -30,7 +30,7 @@ impl ConsumerBuilder {
             tx_opts: lapin::options::BasicPublishOptions::default(),
             rx_opts: lapin::options::BasicConsumeOptions::default(),
             ack_opts: lapin::options::BasicAckOptions::default(),
-            extension: Box::new(crate::consume::EchoConsumer {}),
+            extension: Box::new(EchoMessage {}),
         }
     }
     pub fn exchange(&mut self, exchange: String) -> &mut Self {
@@ -150,10 +150,10 @@ impl Clone for Box<dyn ConsumerExt + Send> {
 }
 
 #[derive(Clone)]
-struct EchoConsumer;
+struct EchoMessage;
 
 #[async_trait]
-impl ConsumerExt for EchoConsumer {
+impl ConsumerExt for EchoMessage {
     async fn recv(&mut self, msg: Vec<u8>) -> lapin::Result<Vec<u8>> {
         Ok(msg)
     }
