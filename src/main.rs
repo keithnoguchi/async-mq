@@ -24,23 +24,40 @@ impl rustmq::Producer for FlatBufferEchoProducer {
     }
 }
 
-struct ConsumerManager {
+struct LocalConsumerManager {
+    builder: ConsumerBuilder,
     consumers: usize,
+    pool: LocalPool,
     spawner: LocalSpawner,
 }
 
-impl ConsumerManager {
-    fn new(consumers: usize, spawner: LocalSpawner) -> Self {
-        Self { consumers, spawner }
-    }
-    async fn run(self, mut builder: ConsumerBuilder) {
-        builder.with_consumer(Box::new(ConsumerHandler {}));
-        for _ in 0..self.consumers {
-            let mut s = builder.build().await.expect("consumer build failed");
-            let _task = self.spawner.spawn_local(async move {
-                s.run().await.expect("consumer died");
-            });
+impl LocalConsumerManager {
+    fn new(builder: rustmq::ConsumerBuilder, consumers: usize) -> Self {
+        let pool = LocalPool::new();
+        let spawner = pool.spawner();
+        Self {
+            builder,
+            consumers,
+            pool,
+            spawner,
         }
+    }
+    fn run(mut self) {
+        let mut builder = self.builder.clone();
+        let consumers = self.consumers;
+        let spawner = self.spawner.clone();
+        self.spawner
+            .spawn_local(async move {
+                builder.with_handler(Box::new(ConsumerHandler {}));
+                for _ in 0..consumers {
+                    let mut consumer = builder.build().await.expect("consumer build failed");
+                    let _task = spawner.spawn_local(async move {
+                        consumer.run().await.expect("consumer died");
+                    });
+                }
+            })
+            .expect("consumer manager died");
+        self.pool.run();
     }
 }
 
@@ -66,7 +83,7 @@ fn main() -> thread::Result<()> {
     let conn = block_on(client.connect(&uri)).expect("fail to connect");
     let mut builder = PublisherBuilder::new(conn);
     builder.queue(String::from(queue_name));
-    let mut producers = Vec::with_capacity(4);
+    let mut producers = Vec::with_capacity(PRODUCER_THREAD_NR);
     for _ in 0..producers.capacity() {
         let builder = builder.clone();
         let producer = thread::spawn(move || {
@@ -75,19 +92,15 @@ fn main() -> thread::Result<()> {
         producers.push(producer);
     }
 
-    // A single connection for the multiple consumers.
+    // A single connection for multiple consumers.
     let conn = block_on(client.connect(&uri)).expect("fail to connect");
     let mut builder = ConsumerBuilder::new(conn);
     builder.queue(String::from(queue_name));
-    let mut consumers = Vec::with_capacity(8);
+    let mut consumers = Vec::with_capacity(CONSUMER_THREAD_NR);
     for _ in 0..consumers.capacity() {
         let builder = builder.clone();
         let consumer = thread::spawn(move || {
-            let mut pool = LocalPool::new();
-            let spawner = pool.spawner();
-            let c = ConsumerManager::new(4, spawner.clone());
-            spawner.spawn_local(c.run(builder)).expect("consumer manager died");
-            pool.run()
+            LocalConsumerManager::new(builder, CONSUMER_INSTANCE_NR).run();
         });
         consumers.push(consumer);
     }
@@ -124,6 +137,12 @@ fn producer(builder: PublisherBuilder) -> Result<()> {
         }
     })
 }
+
+const TOTAL_PRODUCER_NR: usize = 32;
+const TOTAL_CONSUMER_NR: usize = 64;
+const PRODUCER_THREAD_NR: usize = TOTAL_PRODUCER_NR;
+const CONSUMER_THREAD_NR: usize = 8;
+const CONSUMER_INSTANCE_NR: usize = TOTAL_CONSUMER_NR / CONSUMER_THREAD_NR;
 
 fn parse() -> String {
     let scheme = env::var("AMQP_SCHEME").unwrap_or_default();

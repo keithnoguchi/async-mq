@@ -41,7 +41,7 @@ impl ConsumerBuilder {
         self.queue = queue;
         self
     }
-    pub fn with_consumer(&mut self, consumer: Box<dyn crate::ConsumerExt + Send>) -> &mut Self {
+    pub fn with_handler(&mut self, consumer: Box<dyn crate::ConsumerExt + Send>) -> &mut Self {
         self.consumer = consumer;
         self
     }
@@ -92,7 +92,7 @@ pub struct Consumer {
 }
 
 impl Consumer {
-    pub fn with_consumer(&mut self, consumer: Box<dyn crate::ConsumerExt + Send>) -> &mut Self {
+    pub fn with_handler(&mut self, consumer: Box<dyn crate::ConsumerExt + Send>) -> &mut Self {
         self.consumer = consumer;
         self
     }
