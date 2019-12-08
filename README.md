@@ -222,14 +222,56 @@ sswwwrtsyvsxswvrrttwtytsussttvwwtxtxuuswuzwxsuuvxywutxtx
 ^C
 ```
 
+You can check the queue status with `rabbitmqctl list_queues` as below:
+
+```sh
+$  sudo rabbitmqctl list_queues --vhost your_vhost
+Timeout: 60.0 seconds ...
+Listing queues for vhost mx ...
+name    messages
+amq.gen-3CNgzxmjJGoTIjAcy2zhHQ  0
+amq.gen-6kHFOKiqnJIltqeH-1I4WQ  0
+amq.gen-kWjXOMz0MDX9Rwo6F8sPCA  0
+amq.gen-tFNZuCMpdn6so9WnNLAS4w  1
+amq.gen-ScKfpco30LHj1feWIIsFXg  1
+amq.gen-7uGgXCiiExxrAXZEcrbypg  0
+amq.gen-vkFA83xnTHHhR6c_zUG34A  0
+amq.gen-48HpeKkKhmQLAa4Q1beQvg  0
+amq.gen-FAYzlhiy9liKuMEUVUm2Uw  0
+amq.gen-de6sYdZX8cT8yYkb_Y-mPw  0
+hello   23
+amq.gen-gu_TDgPgWcestqlWNtFSoA  0
+amq.gen-advkCsBJKod22vexRSBV6A  0
+amq.gen-T6jLPqqOKsL9jk04CFJwtA  0
+amq.gen--wRWW5hI-rpdds9goMAYdg  1
+amq.gen-f9EYMuzwQoCAhNyIg6SiUQ  0
+amq.gen-DxmcpUxHYGOxCD9Q7QM1xg  1
+amq.gen-EeeJAmHFOT3GPIMhfXDi8Q  0
+amq.gen-zhqOTQag0rM7MDU17pCdXA  0
+amq.gen-vyX6_lAv2Pnmcm1a_tBUKA  0
+amq.gen-enXP4BCXZhB0tg4C1an4sw  0
+amq.gen-nIpKSKokUzU_pCoGTiSBCQ  0
+amq.gen-k1p4udDFoA0xhqSXIpPo-Q  0
+amq.gen-XrNQZ0cqHgSgUZK_CP0g6w  0
+amq.gen-9WZJ4Jw02Dbhhl7sJIQKAQ  0
+amq.gen-1TMw_E8g09Xt9UgCoMz-ig  0
+amq.gen-rVUkIh-85ims0IiabvF7GA  1
+amq.gen-9NeGc4C9qmfX-PLjHkXVDA  0
+amq.gen-swJrMKZmNnLhtI0Djz--ag  0
+amq.gen-5rEAFqYpG4cp8lBEDG6_gQ  1
+amq.gen-ZDNy2Ggt4Dqbvj6cnS-c8A  0
+amq.gen-D8id7SF143eN-k7tmHratw  1
+amq.gen-AiKQaNiz73V9du8EtgKfMg  0
+```
+
 ## References
 
 - [The Async Book]: The Asynchronous Programming in Rust
-  - [Async in traits], [crate async-trait], and [why async fn in traits are hard]
+  - [Async in traits], [crate async-trait], and [why async fn in traits are hard].
 - [The Style Book]: The Rust Style Guidelines
 - [RabbitMQ]: The most widely deployed open source message broker
 - [Crate lapin]: RabbitMQ crate based on AMQP 0.9.1 specification
-  - [Lapin futures v0.3 example]: [Crate futures v0.3] example
+  - [Lapin futures v0.3 example]: [Crate futures v0.3] example.
 - [Crate futures v0.3]: Abstructions for Asynchronous Programming
 - [Original futures design]: Original futures design by [Aaron Turon]
 
@@ -245,3 +287,5 @@ sswwwrtsyvsxswvrrttwtytsussttvwwtxtxuuswuzwxsuuvxywutxtx
 [crate futures v0.3]: https://docs.rs/futures/0.3.1/
 [original futures design]: https://aturon.github.io/blog/2016/09/07/futures-design/
 [Aaron Turon]: https://aturon.github.io/blog/
+
+Happy Hacking!

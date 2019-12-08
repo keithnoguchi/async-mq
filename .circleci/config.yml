@@ -23,9 +23,15 @@ workflows:
             - format
             - lint
             - document
+      - test-release-arch64:
+          requires:
+            - format
+            - lint
+            - document
       - install-arch64:
           requires:
             - test-arch64
+            - test-release-arch64
 jobs:
   checkout:
     <<: *defaults
@@ -64,6 +70,18 @@ jobs:
       - attach_workspace:
           at: .
       - run: make test-ubuntu64
+  test-release-arch64:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: .
+      - run: make test-release-arch64
+  test-release-ubuntu64:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: .
+      - run: make test-release-ubuntu64
   run-arch64:
     <<: *defaults
     steps:

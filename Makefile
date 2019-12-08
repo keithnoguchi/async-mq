@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: APACHE-2.0 AND MIT
-.PHONY: build check test clean run install update readme fmt lint
-.PHONY: doc doc-all doc-crate readme fmt lint
+.PHONY: build check test test-release clean run run-release install update \
+	readme fmt lint doc doc-all doc-crate readme fmt lint
 all: fmt lint test
 build:
 	@cd schema && flatc --rust *.fbs
@@ -8,10 +8,14 @@ check: build
 	@cargo check
 test: build
 	@cargo test
+test-release: build
+	@cargo test --release
 clean:
 	@cargo clean
 run: build
 	@cargo run
+run-release: build
+	@cargo run --release
 install: build
 	@cargo install --force --path .
 update:
