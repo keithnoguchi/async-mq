@@ -1,9 +1,16 @@
 // SPDX-License-Identifier: APACHE-2.0 AND MIT
-//! Consumer, ConsumerBuilder, and ConsumerExt trait.
+//! [ConsumerBuilder], [Consumer] structs, and [ConsumerExt] trait
+//!
+//! [ConsumerBuilder]: struct.ConsumerBuilder.html
+//! [Consumer]: struct.Consumer.html
+//! [ConsumerExt]: trait.ConsumerExt.html
 use async_trait::async_trait;
 use futures_util::stream::StreamExt;
 use lapin;
 
+/// A [Consumer] builder.
+///
+/// [Consumer]: struct.Consumer.html
 #[derive(Clone)]
 pub struct ConsumerBuilder {
     conn: crate::Connection,
@@ -30,17 +37,23 @@ impl ConsumerBuilder {
             tx_opts: lapin::options::BasicPublishOptions::default(),
             rx_opts: lapin::options::BasicConsumeOptions::default(),
             ack_opts: lapin::options::BasicAckOptions::default(),
-            extension: Box::new(EchoMessage {}),
+            extension: Box::new(EchoMessager {}),
         }
     }
+    /// Override the default exchange name.
     pub fn exchange(&mut self, exchange: String) -> &mut Self {
         self.ex = exchange;
         self
     }
+    /// Override the default queue name.
     pub fn queue(&mut self, queue: String) -> &mut Self {
         self.queue = queue;
         self
     }
+    /// Override the default [EchoMessenger] [ConsumerExt] trait object.
+    ///
+    /// [EchoMessenger]: struct.EchoMessenger.html
+    /// [ConsumerExt]: trait.ConsumerExt.html
     pub fn with_ext(&mut self, extension: Box<dyn crate::ConsumerExt + Send>) -> &mut Self {
         self.extension = extension;
         self
@@ -82,6 +95,9 @@ impl ConsumerBuilder {
     }
 }
 
+/// A zero-cost [lapin::Consumer] abstruction type.
+///
+/// [lapin::Consumer]: https://docs.rs/lapin/latest/lapin/struct.Consumer.html
 pub struct Consumer {
     ch: lapin::Channel,
     consume: lapin::Consumer,
@@ -92,6 +108,10 @@ pub struct Consumer {
 }
 
 impl Consumer {
+    /// Override the default [EchoMessenger] [ConsumerExt] trait object.
+    ///
+    /// [EchoMessenger]: struct.EchoMessenger.html
+    /// [ConsumerExt]: trait.ConsumerExt.html
     pub fn with_ext(&mut self, extension: Box<dyn crate::ConsumerExt + Send>) -> &mut Self {
         self.extension = extension;
         self
@@ -105,6 +125,13 @@ impl Consumer {
         }
         Ok(())
     }
+    /// Transfer the received message to [ConsumerExt] and acknowledge
+    /// it to the broker, or nack in case [ConsumerExt] implementor returns
+    /// error.  In case of the message contains `reply_to` field, it will
+    /// send back to the response queue specified in `reply_to` field in
+    /// the message.
+    ///
+    /// [ConsumerExt]: trait.ConsumerExt.html
     async fn recv(&mut self, msg: lapin::message::Delivery) -> lapin::Result<()> {
         let delivery_tag = msg.delivery_tag;
         let reply_to = msg.properties.reply_to();
@@ -136,8 +163,15 @@ impl Consumer {
         Ok(())
     }
 }
+
+/// A trait to extend the [Consumer] capability.
+///
+/// [Consumer]: struct.Consumer.html
 #[async_trait]
 pub trait ConsumerExt {
+    /// Async method to transfer the message to [ConsumerExt] implementor.
+    ///
+    /// [ConsumerExt]: trait.ConsumerExt.html
     async fn recv(&mut self, msg: Vec<u8>) -> lapin::Result<Vec<u8>>;
     fn box_clone(&self) -> Box<dyn ConsumerExt + Send>;
 }
@@ -149,11 +183,15 @@ impl Clone for Box<dyn ConsumerExt + Send> {
     }
 }
 
+/// A default [ConsumerExt] implementor that echoes back the received message.
+///
+/// [ConsumerExt]: trait.ConsumerExt.html
 #[derive(Clone)]
-struct EchoMessage;
+pub struct EchoMessager;
 
 #[async_trait]
-impl ConsumerExt for EchoMessage {
+impl ConsumerExt for EchoMessager {
+    /// Echoe back the received message.
     async fn recv(&mut self, msg: Vec<u8>) -> lapin::Result<Vec<u8>> {
         Ok(msg)
     }

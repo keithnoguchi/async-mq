@@ -1,10 +1,16 @@
 // SPDX-License-Identifier: APACHE-2.0 AND MIT
-//! Producer, ProducerBuilder, and ProducerExt trait.
+//! [ProducerBuilder], [Producer] structs, and [ProducerExt] traits
+//!
+//! [ProducerBuilder]: struct.ProducerBuilder.html
+//! [Producer]: struct.Producer.html
+//! [ProducerExt]: trait.ProducerExt.html
 use async_trait::async_trait;
 use futures_util::stream::StreamExt;
 use lapin;
 
-/// ProducerBuilder builds the Producer.
+/// A [Producer] builder.
+///
+/// [Producer]: struct.Producer.html
 #[derive(Clone)]
 pub struct ProducerBuilder {
     conn: crate::Connection,
@@ -31,7 +37,7 @@ impl ProducerBuilder {
             tx_opts: lapin::options::BasicPublishOptions::default(),
             rx_opts: lapin::options::BasicConsumeOptions::default(),
             ack_opts: lapin::options::BasicAckOptions::default(),
-            extension: Box::new(crate::produce::DebugPrintProducer {}),
+            extension: Box::new(crate::produce::DebugPrinter {}),
         }
     }
     pub fn exchange(&mut self, exchange: String) -> &mut Self {
@@ -42,6 +48,10 @@ impl ProducerBuilder {
         self.queue = queue;
         self
     }
+    /// Override the default [DebugPrinter] [ProducerExt] trait object.
+    ///
+    /// [DebugPrinter]: struct.DebugPrinter.html
+    /// [ProducerExt]: trait.ProducerExt.html
     pub fn with_ext(&mut self, extension: Box<dyn crate::ProducerExt + Send>) -> &mut Self {
         self.extension = extension;
         self
@@ -95,6 +105,9 @@ impl ProducerBuilder {
     }
 }
 
+/// A zero-cost message producer over [lapin::Channel].
+///
+/// [lapin::Channel]: https://docs.rs/lapin/latest/lapin/struct.Channel.html
 pub struct Producer {
     tx: lapin::Channel,
     rx: lapin::Channel,
@@ -109,6 +122,10 @@ pub struct Producer {
 }
 
 impl Producer {
+    /// Override the default [DebugPrinter] [ProducerExt] trait object.
+    ///
+    /// [DebugPrinter]: struct.DebugPrinter.html
+    /// [ProducerExt]: trait.ProducerExt.html
     pub fn with_ext(&mut self, extension: Box<dyn crate::ProducerExt + Send>) -> &mut Self {
         self.extension = extension;
         self
@@ -153,6 +170,9 @@ impl Producer {
     }
 }
 
+/// A trait to extend the [Producer] capability.
+///
+/// [Producer]: struct.Producer.html
 #[async_trait]
 pub trait ProducerExt {
     async fn recv(&mut self, msg: Vec<u8>) -> lapin::Result<()>;
@@ -166,11 +186,15 @@ impl Clone for Box<dyn ProducerExt + Send> {
     }
 }
 
+/// A default [ProducerExt] implementor that prints out the received
+/// message to `stderr`.
+///
+/// [ProducerExt]: trait.ProducerExt.html
 #[derive(Clone)]
-pub struct DebugPrintProducer;
+pub struct DebugPrinter;
 
 #[async_trait]
-impl ProducerExt for DebugPrintProducer {
+impl ProducerExt for DebugPrinter {
     async fn recv(&mut self, msg: Vec<u8>) -> lapin::Result<()> {
         eprintln!("{:?}", msg);
         Ok(())

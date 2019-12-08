@@ -1,11 +1,16 @@
 // SPDX-License-Identifier: APACHE-2.0 AND MIT
-//! client module for the connection to the message queue broker.
+//! [Client] and [Connection] structs
+//!
+//! [Client]: struct.Client.html
+//! [Connection]: struct.Connection.html
 use lapin::options::QueueDeclareOptions;
 use lapin::types::FieldTable;
 use lapin::{Channel, ConnectionProperties, Queue, Result};
 use std::default::Default;
 
-/// Client is the non-consuming builder for the Connection.
+/// A non-consuming [Connection] builder.
+///
+/// [Connection]: struct.Connection.html
 pub struct Client {
     props: ConnectionProperties,
 }
@@ -33,13 +38,16 @@ impl Default for Client {
     }
 }
 
-/// Connection represents the connection to the message queue broker.
+/// A non-consuming [ProducerBuilder] and [ConsumerBuilder] builder.
+///
+/// [ProducerBuilder]: ../produce/struct.ProducerBuilder.html
+/// [ConsumerBuilder]: ../consume/struct.ConsumerBuilder.html
 #[derive(Clone)]
 pub struct Connection(lapin::Connection);
 
 impl Connection {
-    /// channel creates the channel and the queue over the connection
-    /// and returns the Future<Output = <Channel, Queue>>.
+    /// channel creates a channel and a queue over the [Connection]
+    /// and returns the `Future<Output = <lapin::Channel, lapin::Queue>>`.
     pub async fn channel(
         &self,
         queue: &str,

@@ -18,6 +18,13 @@ steps:
       - rustup default stable
       - rustup component add clippy
       - make lint
+  - name: document
+    image: archlinux/base
+    commands:
+      - pacman -Sy --noconfirm make gcc pkgconf rustup flatbuffers
+      - rustup update stable
+      - rustup default stable
+      - make doc-all
   - name: test
     image: archlinux/base
     commands:
@@ -28,16 +35,7 @@ steps:
     depends_on:
       - format
       - lint
-  - name: document
-    image: archlinux/base
-    commands:
-      - pacman -Sy --noconfirm make gcc pkgconf rustup flatbuffers
-      - rustup update stable
-      - rustup default stable
-      - make doc
-    depends_on:
-      - format
-      - lint
+      - document
   - name: install
     image: archlinux/base
     commands:
@@ -47,4 +45,3 @@ steps:
       - make install
     depends_on:
       - test
-      - document

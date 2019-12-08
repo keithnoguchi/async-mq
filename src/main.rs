@@ -4,7 +4,7 @@ use flatbuffers::FlatBufferBuilder;
 use futures_executor::{block_on, LocalPool, LocalSpawner};
 use futures_util::task::LocalSpawnExt;
 use lapin::Result;
-use rustmq::{Client, ConsumerBuilder, ProducerBuilder};
+use rustmq::prelude::*;
 use std::{env, thread};
 
 fn main() -> thread::Result<()> {
@@ -55,7 +55,7 @@ struct ASCIIGenerator {
 }
 
 impl ASCIIGenerator {
-    fn new(builder: rustmq::ProducerBuilder) -> Self {
+    fn new(builder: ProducerBuilder) -> Self {
         Self { builder }
     }
     fn run(&mut self) -> Result<()> {
@@ -85,7 +85,7 @@ impl ASCIIGenerator {
 pub struct FlatBufferPrinter;
 
 #[async_trait]
-impl rustmq::ProducerExt for FlatBufferPrinter {
+impl ProducerExt for FlatBufferPrinter {
     async fn recv(&mut self, msg: Vec<u8>) -> lapin::Result<()> {
         let msg = crate::msg::get_root_as_message(&msg);
         if let Some(msg) = msg.msg() {
@@ -93,7 +93,7 @@ impl rustmq::ProducerExt for FlatBufferPrinter {
         }
         Ok(())
     }
-    fn box_clone(&self) -> Box<dyn rustmq::ProducerExt + Send> {
+    fn box_clone(&self) -> Box<dyn ProducerExt + Send> {
         Box::new((*self).clone())
     }
 }
@@ -106,7 +106,7 @@ struct LocalConsumerManager {
 }
 
 impl LocalConsumerManager {
-    fn new(builder: rustmq::ConsumerBuilder, consumers: usize) -> Self {
+    fn new(builder: ConsumerBuilder, consumers: usize) -> Self {
         let pool = LocalPool::new();
         let spawner = pool.spawner();
         Self {
@@ -139,11 +139,11 @@ impl LocalConsumerManager {
 struct EchoMessage;
 
 #[async_trait]
-impl rustmq::ConsumerExt for EchoMessage {
+impl ConsumerExt for EchoMessage {
     async fn recv(&mut self, msg: Vec<u8>) -> lapin::Result<Vec<u8>> {
         Ok(msg)
     }
-    fn box_clone(&self) -> Box<dyn rustmq::ConsumerExt + Send> {
+    fn box_clone(&self) -> Box<dyn ConsumerExt + Send> {
         Box::new((*self).clone())
     }
 }

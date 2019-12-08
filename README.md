@@ -22,14 +22,14 @@
 ## Example
 
 Currently, [main.rs] demonstrates the [crate lapin] RabbitMQ RPC pattern
-with the Rust 1.39 [async/.await] feature.  It creates 32 producer threads
-and 8 consumer threads, with each thread runs 8 consumer [async/.await]
+with the Rust 1.39 [async-await] feature.  It creates 32 producer threads
+and 8 consumer threads, with each thread runs 8 consumer [async-await]
 instances.  It also uses [FlatBuffers] as a message encoding technology.
 Currently, it just generate simple message with a single string, from
 'a' to 'z'.
 
 [main.rs]: src/main.rs
-[async/.await]: https://blog.rust-lang.org/2019/11/07/Async-await-stable.html
+[async-await]: https://blog.rust-lang.org/2019/11/07/Async-await-stable.html
 
 Here is the main function:
 
@@ -234,7 +234,7 @@ sswwwrtsyvsxswvrrttwtytsussttvwwtxtxuuswuzwxsuuvxywutxtx
 - [Original futures design]: Original futures design by [Aaron Turon]
 
 [the async book]: https://rust-lang.github.io/async-book/
-[async in trait]: https://rust-lang.github.io/async-book/07_workarounds/06_async_in_traits.html
+[async in traits]: https://rust-lang.github.io/async-book/07_workarounds/06_async_in_traits.html
 [crate async-trait]: https://github.com/dtolnay/async-trait
 [why async fn in traits are hard]: https://smallcultfollowing.com/babysteps/blog/2019/10/26/async-fn-in-traits-are-hard/
 [the style book]: https://doc.rust-lang.org/1.0.0/style/README.html
