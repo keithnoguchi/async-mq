@@ -4,7 +4,7 @@ use flatbuffers::FlatBufferBuilder;
 use futures_executor::{block_on, LocalPool, LocalSpawner};
 use futures_util::task::LocalSpawnExt;
 use lapin::Result;
-use rustmq::{Client, ConsumerBuilder, PublisherBuilder};
+use rustmq::{Client, ConsumerBuilder, ProducerBuilder};
 use std::{env, thread};
 
 #[derive(Clone)]
@@ -81,7 +81,7 @@ fn main() -> thread::Result<()> {
 
     // A single connection for the multiple producers.
     let conn = block_on(client.connect(&uri)).expect("fail to connect");
-    let mut builder = PublisherBuilder::new(conn);
+    let mut builder = ProducerBuilder::new(conn);
     builder.queue(String::from(queue_name));
     let mut producers = Vec::with_capacity(PRODUCER_THREAD_NR);
     for _ in 0..producers.capacity() {
@@ -117,7 +117,7 @@ fn main() -> thread::Result<()> {
     Ok(())
 }
 
-fn producer(builder: PublisherBuilder) -> Result<()> {
+fn producer(builder: ProducerBuilder) -> Result<()> {
     let mut pool = LocalPool::new();
     pool.run_until(async move {
         let mut buf_builder = FlatBufferBuilder::new();
