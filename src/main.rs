@@ -24,12 +24,12 @@ impl rustmq::Producer for FlatBufferEchoProducer {
     }
 }
 
-struct LocalConsumers {
+struct ConsumerManager {
     consumers: usize,
     spawner: LocalSpawner,
 }
 
-impl LocalConsumers {
+impl ConsumerManager {
     fn new(consumers: usize, spawner: LocalSpawner) -> Self {
         Self { consumers, spawner }
     }
@@ -85,8 +85,8 @@ fn main() -> thread::Result<()> {
         let consumer = thread::spawn(move || {
             let mut pool = LocalPool::new();
             let spawner = pool.spawner();
-            let c = LocalConsumers::new(4, spawner.clone());
-            spawner.spawn_local(c.run(builder)).expect("consumers died");
+            let c = ConsumerManager::new(4, spawner.clone());
+            spawner.spawn_local(c.run(builder)).expect("consumer manager died");
             pool.run()
         });
         consumers.push(consumer);
