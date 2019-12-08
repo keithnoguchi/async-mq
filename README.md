@@ -12,17 +12,13 @@
 
 - [client]: `Client` and `Connection` struct types
 - [produce]: `Producer` trait type and the sample `Producer` trait instance
-- [consume]: `Consumer` trait type and the sample `Consumer` trait instance
+- [consume]: `Consumer, `ConsumerBuilder` and `ConsumerExt` trait
 - [publish]: `Publisher` and `PublisherBuilder` struct types
-- [subscribe]: `Subscriber` and `SubscriberBuilder` struct types
-- [msg]: [Flatbuffers] based example messages
 
 [client]: src/client.rs
 [produce]: src/produce.rs
 [consume]: src/consume.rs
 [publish]: src/publish.rs
-[subscribe]: src/subscribe.rs
-[msg]: src/msg.rs
 [main.rs]: src/main.rs
 [flatbuffers]: https://google.github.io/flatbuffers/
 
