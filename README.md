@@ -19,18 +19,21 @@
 [produce]: src/produce.rs
 [consume]: src/consume.rs
 [publish]: src/publish.rs
-[main.rs]: src/main.rs
 [flatbuffers]: https://google.github.io/flatbuffers/
 
 ## Example
 
 Currently, [main.rs] demonstrates the [crate lapin] RabbitMQ RPC pattern
-with the Rust 3.39 [async/.await] feature.  It creates 8 consumer threads
-with 4 each consumer instance, hence 32 consumers, with 4 producer threads.
-It uses [flatbuffers] to encode the message over the message bus and
-producers just echo back the message to the consumer through the callback
-queue.  Each producers sends alphabet 'a' to 'z' and dumps the result
-to the stdout.  Here is the main function, which creates all those threads.
+with the Rust 1.39 [async/.await] feature.  It creates 32 producer threads
+and 8 consumer threads, with each thread runs 8 consumer [async/.await]
+instances.  It also uses [FlatBuffers] as a message encoding technology.
+Currently, it just generate simple message with a single string, from
+'a' to 'z'.
+
+[main.rs]: src/main.rs
+[async/.await]: https://blog.rust-lang.org/2019/11/07/Async-await-stable.html
+
+Here is the current main function:
 
 ```sh
 fn main() -> thread::Result<()> {
