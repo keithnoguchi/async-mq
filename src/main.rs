@@ -20,7 +20,7 @@ fn main() -> thread::Result<()> {
     for _ in 0..producers.capacity() {
         let builder = builder.clone();
         let producer = thread::spawn(move || {
-            producer(builder).expect("producer died");
+            ASCIIGenerator::new(builder).run().expect("generator died");
         });
         producers.push(producer);
     }
@@ -50,25 +50,35 @@ fn main() -> thread::Result<()> {
     Ok(())
 }
 
-fn producer(builder: ProducerBuilder) -> Result<()> {
-    let mut pool = LocalPool::new();
-    pool.run_until(async move {
-        let mut buf_builder = FlatBufferBuilder::new();
-        let mut p = builder.build().await?;
-        p.with_ext(Box::new(FlatBufferPrinter {}));
-        loop {
-            for data in { b'a'..b'z' } {
-                let data = buf_builder.create_string(&String::from_utf8(vec![data]).unwrap());
-                let mut mb = crate::msg::MessageBuilder::new(&mut buf_builder);
-                mb.add_msg(data);
-                let msg = mb.finish();
-                buf_builder.finish(msg, None);
-                let msg = buf_builder.finished_data();
-                p.rpc(msg.to_vec()).await?;
-                buf_builder.reset();
+struct ASCIIGenerator {
+    builder: ProducerBuilder,
+}
+
+impl ASCIIGenerator {
+    fn new(builder: rustmq::ProducerBuilder) -> Self {
+        Self { builder }
+    }
+    fn run(&mut self) -> Result<()> {
+        let builder = self.builder.clone();
+        let mut pool = LocalPool::new();
+        pool.run_until(async move {
+            let mut buf_builder = FlatBufferBuilder::new();
+            let mut p = builder.build().await?;
+            p.with_ext(Box::new(FlatBufferPrinter {}));
+            loop {
+                for data in { b'a'..b'z' } {
+                    let data = buf_builder.create_string(&String::from_utf8(vec![data]).unwrap());
+                    let mut mb = crate::msg::MessageBuilder::new(&mut buf_builder);
+                    mb.add_msg(data);
+                    let msg = mb.finish();
+                    buf_builder.finish(msg, None);
+                    let msg = buf_builder.finished_data();
+                    p.rpc(msg.to_vec()).await?;
+                    buf_builder.reset();
+                }
             }
-        }
-    })
+        })
+    }
 }
 
 #[derive(Clone)]
