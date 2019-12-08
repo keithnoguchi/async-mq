@@ -34,12 +34,9 @@ impl LocalConsumers {
         Self { consumers, spawner }
     }
     async fn run(self, mut builder: SubscriberBuilder) {
+        builder.with_consumer(Box::new(ConsumerHandler {}));
         for _ in 0..self.consumers {
-            let mut s = builder
-                .with_consumer(Box::new(ConsumerHandler {}))
-                .build()
-                .await
-                .expect("consumer build failed");
+            let mut s = builder.build().await.expect("consumer build failed");
             let _task = self.spawner.spawn_local(async move {
                 s.run().await.expect("consumer died");
             });
