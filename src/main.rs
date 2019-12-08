@@ -60,7 +60,7 @@ impl ASCIIGenerator {
     }
     fn run(&mut self) -> Result<()> {
         let mut builder = self.builder.clone();
-        builder.with_ext(Box::new(BufferPeeker {}));
+        builder.with_ext(Box::new(NoopPeeker {}));
         let mut pool = LocalPool::new();
         pool.run_until(async move {
             let mut producer = builder.build().await?;
@@ -87,6 +87,9 @@ impl ASCIIGenerator {
         req
     }
     fn print_buf(&self, resp: Vec<u8>) {
+        if resp.is_empty() {
+            return;
+        }
         let msg = crate::msg::get_root_as_message(&resp);
         if let Some(data) = msg.msg() {
             eprint!("{}", data);
@@ -94,14 +97,31 @@ impl ASCIIGenerator {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Clone)]
-pub struct BufferPeeker;
+struct NoopPeeker;
 
 #[async_trait]
-impl ProducerExt for BufferPeeker {
+impl ProducerExt for NoopPeeker {
     async fn peek(&mut self, msg: Vec<u8>) -> lapin::Result<Vec<u8>> {
         // Nothing to do now.
         Ok(msg)
+    }
+    fn box_clone(&self) -> Box<dyn ProducerExt + Send> {
+        Box::new((*self).clone())
+    }
+}
+
+#[allow(dead_code)]
+#[derive(Clone)]
+struct DropPeeker;
+
+#[async_trait]
+impl ProducerExt for DropPeeker {
+    /// Just comsume the received message so that no message print out
+    /// to the console.  This is good for the benchmarking.
+    async fn peek(&mut self, _msg: Vec<u8>) -> lapin::Result<Vec<u8>> {
+        Ok(vec![])
     }
     fn box_clone(&self) -> Box<dyn ProducerExt + Send> {
         Box::new((*self).clone())
