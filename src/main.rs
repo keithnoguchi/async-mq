@@ -4,14 +4,14 @@ use flatbuffers::FlatBufferBuilder;
 use futures_executor::{block_on, LocalPool, LocalSpawner};
 use futures_util::task::LocalSpawnExt;
 use lapin::Result;
-use rustmq::{Client, Consumer, Producer, PublisherBuilder, SubscriberBuilder};
+use rustmq::{Client, MessageBuilder, PublisherBuilder, SubscriberBuilder};
 use std::{env, thread};
 
 #[derive(Clone)]
-pub struct FlatbufferDumpProducer;
+pub struct FlatBufferEchoProducer;
 
 #[async_trait]
-impl Producer for FlatbufferDumpProducer {
+impl rustmq::Producer for FlatBufferEchoProducer {
     async fn recv(&mut self, msg: Vec<u8>) -> lapin::Result<()> {
         let msg = rustmq::get_root_as_message(&msg);
         if let Some(msg) = msg.msg() {
@@ -19,7 +19,7 @@ impl Producer for FlatbufferDumpProducer {
         }
         Ok(())
     }
-    fn box_clone(&self) -> Box<dyn Producer + Send> {
+    fn box_clone(&self) -> Box<dyn rustmq::Producer + Send> {
         Box::new((*self).clone())
     }
 }
@@ -28,11 +28,11 @@ impl Producer for FlatbufferDumpProducer {
 struct EchoConsumer;
 
 #[async_trait]
-impl Consumer for EchoConsumer {
+impl rustmq::Consumer for EchoConsumer {
     async fn consume(&mut self, msg: Vec<u8>) -> lapin::Result<Vec<u8>> {
         Ok(msg)
     }
-    fn box_clone(&self) -> Box<dyn Consumer + Send> {
+    fn box_clone(&self) -> Box<dyn rustmq::Consumer + Send> {
         Box::new((*self).clone())
     }
 }
@@ -89,11 +89,11 @@ fn producer(builder: PublisherBuilder) -> Result<()> {
     pool.run_until(async move {
         let mut buf_builder = FlatBufferBuilder::new();
         let mut p = builder.build().await?;
-        p.with_producer(Box::new(FlatbufferDumpProducer {}));
+        p.with_producer(Box::new(FlatBufferEchoProducer {}));
         loop {
             for data in { b'a'..b'z' } {
                 let data = buf_builder.create_string(&String::from_utf8(vec![data]).unwrap());
-                let mut mb = rustmq::MessageBuilder::new(&mut buf_builder);
+                let mut mb = MessageBuilder::new(&mut buf_builder);
                 mb.add_msg(data);
                 let msg = mb.finish();
                 buf_builder.finish(msg, None);
