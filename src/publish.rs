@@ -30,7 +30,7 @@ impl PublisherBuilder {
             tx_opts: lapin::options::BasicPublishOptions::default(),
             rx_opts: lapin::options::BasicConsumeOptions::default(),
             ack_opts: lapin::options::BasicAckOptions::default(),
-            producer: Box::new(crate::produce::FlatbufferDumpProducer {}),
+            producer: Box::new(crate::produce::DebugPrintProducer {}),
         }
     }
     pub fn exchange(&mut self, exchange: String) -> &mut Self {

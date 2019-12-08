@@ -17,15 +17,12 @@ impl Clone for Box<dyn Producer + Send> {
 }
 
 #[derive(Clone)]
-pub struct FlatbufferDumpProducer;
+pub struct DebugPrintProducer;
 
 #[async_trait]
-impl Producer for FlatbufferDumpProducer {
+impl Producer for DebugPrintProducer {
     async fn recv(&mut self, msg: Vec<u8>) -> lapin::Result<()> {
-        let msg = crate::msg::get_root_as_message(&msg);
-        if let Some(msg) = msg.msg() {
-            eprint!("{}", msg);
-        }
+        eprintln!("{:?}", msg);
         Ok(())
     }
     fn box_clone(&self) -> Box<dyn Producer + Send> {
