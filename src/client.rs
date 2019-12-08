@@ -46,6 +46,18 @@ impl Default for Client {
 pub struct Connection(lapin::Connection);
 
 impl Connection {
+    /// Build a non-consuming [ProducerBuilder].
+    ///
+    /// [ProducerBuilder]: ../consume/struct.ProducerBuilder.html
+    pub fn producer_builder(&self) -> crate::ProducerBuilder {
+        crate::ProducerBuilder::new(self.clone())
+    }
+    /// Build a non-consuming [ConsumerBuilder].
+    ///
+    /// [ConsumerBuilder]: ../consume/struct.ConsumerBuilder.html
+    pub fn consumer_builder(&self) -> crate::ConsumerBuilder {
+        crate::ConsumerBuilder::new(self.clone())
+    }
     /// channel creates a channel and a queue over the [Connection]
     /// and returns the `Future<Output = <lapin::Channel, lapin::Queue>>`.
     pub async fn channel(

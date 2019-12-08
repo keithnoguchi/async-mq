@@ -14,7 +14,7 @@ fn main() -> thread::Result<()> {
 
     // A single connection for the multiple producers.
     let conn = block_on(client.connect(&uri)).expect("fail to connect");
-    let mut builder = ProducerBuilder::new(conn);
+    let mut builder = conn.producer_builder();
     builder.queue(String::from(queue_name));
     let mut producers = Vec::with_capacity(PRODUCER_THREAD_NR);
     for _ in 0..producers.capacity() {
@@ -27,7 +27,7 @@ fn main() -> thread::Result<()> {
 
     // A single connection for multiple consumers.
     let conn = block_on(client.connect(&uri)).expect("fail to connect");
-    let mut builder = ConsumerBuilder::new(conn);
+    let mut builder = conn.consumer_builder();
     builder.queue(String::from(queue_name));
     let mut consumers = Vec::with_capacity(CONSUMER_THREAD_NR);
     for _ in 0..consumers.capacity() {
