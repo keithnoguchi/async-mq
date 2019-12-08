@@ -108,7 +108,7 @@ impl Consumer {
     async fn recv(&mut self, msg: lapin::message::Delivery) -> lapin::Result<()> {
         let delivery_tag = msg.delivery_tag;
         let reply_to = msg.properties.reply_to();
-        match self.consumer.consume(msg.data).await {
+        match self.consumer.recv(msg.data).await {
             Err(err) => return Err(err),
             Ok(msg) => {
                 if let Some(reply_to) = reply_to {
@@ -138,7 +138,7 @@ impl Consumer {
 }
 #[async_trait]
 pub trait ConsumerExt {
-    async fn consume(&mut self, msg: Vec<u8>) -> lapin::Result<Vec<u8>>;
+    async fn recv(&mut self, msg: Vec<u8>) -> lapin::Result<Vec<u8>>;
     fn box_clone(&self) -> Box<dyn ConsumerExt + Send>;
 }
 
@@ -154,7 +154,7 @@ struct EchoConsumer;
 
 #[async_trait]
 impl ConsumerExt for EchoConsumer {
-    async fn consume(&mut self, msg: Vec<u8>) -> lapin::Result<Vec<u8>> {
+    async fn recv(&mut self, msg: Vec<u8>) -> lapin::Result<Vec<u8>> {
         Ok(msg)
     }
     fn box_clone(&self) -> Box<dyn ConsumerExt + Send> {

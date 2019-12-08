@@ -66,7 +66,7 @@ struct EchoConsumerHandler;
 
 #[async_trait]
 impl rustmq::ConsumerExt for EchoConsumerHandler {
-    async fn consume(&mut self, msg: Vec<u8>) -> lapin::Result<Vec<u8>> {
+    async fn recv(&mut self, msg: Vec<u8>) -> lapin::Result<Vec<u8>> {
         Ok(msg)
     }
     fn box_clone(&self) -> Box<dyn rustmq::ConsumerExt + Send> {
