@@ -40,7 +40,7 @@ impl ConsumerBuilder {
             rx_opts: lapin::options::BasicConsumeOptions::default(),
             ack_opts: lapin::options::BasicAckOptions::default(),
             nack_opts: lapin::options::BasicNackOptions::default(),
-            extension: Box::new(EchoMessager {}),
+            extension: Box::new(EchoMessenger {}),
         }
     }
     /// Override the default exchange name.
@@ -187,10 +187,10 @@ impl Clone for Box<dyn ConsumerExt + Send> {
 ///
 /// [ConsumerExt]: trait.ConsumerExt.html
 #[derive(Clone)]
-pub struct EchoMessager;
+pub struct EchoMessenger;
 
 #[async_trait]
-impl ConsumerExt for EchoMessager {
+impl ConsumerExt for EchoMessenger {
     /// Echoe back the received message.
     async fn recv(&mut self, msg: Vec<u8>) -> crate::Result<Vec<u8>> {
         Ok(msg)

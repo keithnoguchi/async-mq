@@ -151,7 +151,7 @@ impl LocalConsumerManager {
         let spawner = self.spawner.clone();
         self.spawner
             .spawn_local(async move {
-                builder.with_ext(Box::new(EchoMessage {}));
+                builder.with_ext(Box::new(EchoMessenger {}));
                 for _ in 0..consumers {
                     let mut consumer = builder.build().await.expect("consumer build failed");
                     let _task = spawner.spawn_local(async move {
@@ -165,10 +165,10 @@ impl LocalConsumerManager {
 }
 
 #[derive(Clone)]
-struct EchoMessage;
+struct EchoMessenger;
 
 #[async_trait]
-impl ConsumerExt for EchoMessage {
+impl ConsumerExt for EchoMessenger {
     async fn recv(&mut self, msg: Vec<u8>) -> Result<Vec<u8>, rustmq::Error> {
         Ok(msg)
     }
