@@ -1,20 +1,29 @@
 // SPDX-License-Identifier: APACHE-2.0 AND MIT
-//! Error enum
+//! Error enum type
 use cookie_factory;
 use lapin;
-use std::{cmp, fmt};
 
 /// An error enum.
 pub enum Error {
-    /// [lapin::Error] variant
+    /// [lapin::Error] variant.
     ///
     /// [lapin::Error]: https://docs.rs/lapin/latest/lapin/enum.Error.html
     Internal(lapin::Error),
+    /// Other error variant.
     Other,
 }
 
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl std::error::Error for Error {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Internal(err) => Some(err),
+            Self::Other => None,
+        }
+    }
+}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Internal(err) => err.fmt(f),
             Self::Other => write!(f, "other error"),
@@ -22,11 +31,11 @@ impl fmt::Display for Error {
     }
 }
 
-impl fmt::Debug for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl std::fmt::Debug for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Internal(err) => err.fmt(f),
-            Self::Other => write!(f, "Other"),
+            Self::Other => write!(f, "Error::Other"),
         }
     }
 }
@@ -37,7 +46,7 @@ impl From<lapin::Error> for Error {
     }
 }
 
-impl cmp::PartialEq for Error {
+impl std::cmp::PartialEq for Error {
     fn eq(&self, other: &Self) -> bool {
         match self {
             Self::Internal(err) => match other {
@@ -145,7 +154,78 @@ impl Error {
 mod tests {
     use cookie_factory;
     use lapin;
+    use std::error::Error;
+    use std::fmt::Write;
     use std::io::{self, ErrorKind};
+    #[test]
+    fn source_internal_then_debug() {
+        struct Test {
+            data: super::Error,
+            want: String,
+        }
+        let mut tests = [
+            Test {
+                data: crate::Error::Internal(lapin::Error::ConnectionRefused),
+                want: String::from("ConnectionRefused"),
+            },
+            Test {
+                data: crate::Error::Internal(lapin::Error::NotConnected),
+                want: String::from("NotConnected"),
+            },
+            Test {
+                data: crate::Error::Internal(lapin::Error::UnexpectedReply),
+                want: String::from("UnexpectedReply"),
+            },
+            Test {
+                data: crate::Error::Internal(lapin::Error::PreconditionFailed),
+                want: String::from("PreconditionFailed"),
+            },
+            Test {
+                data: crate::Error::Internal(lapin::Error::ChannelLimitReached),
+                want: String::from("ChannelLimitReached"),
+            },
+        ];
+        for t in &mut tests {
+            let mut got = String::new();
+            let err = t.data.source().unwrap();
+            write!(&mut got, "{:?}", err).unwrap();
+            assert_eq!(t.want, got);
+        }
+    }
+    #[test]
+    fn debug_internal() {
+        struct Test {
+            data: super::Error,
+            want: String,
+        }
+        let mut tests = [
+            Test {
+                data: crate::Error::Internal(lapin::Error::ConnectionRefused),
+                want: String::from("ConnectionRefused"),
+            },
+            Test {
+                data: crate::Error::Internal(lapin::Error::NotConnected),
+                want: String::from("NotConnected"),
+            },
+            Test {
+                data: crate::Error::Internal(lapin::Error::UnexpectedReply),
+                want: String::from("UnexpectedReply"),
+            },
+            Test {
+                data: crate::Error::Internal(lapin::Error::PreconditionFailed),
+                want: String::from("PreconditionFailed"),
+            },
+            Test {
+                data: crate::Error::Internal(lapin::Error::ChannelLimitReached),
+                want: String::from("ChannelLimitReached"),
+            },
+        ];
+        for t in &mut tests {
+            let mut got = String::new();
+            write!(&mut got, "{:?}", t.data).unwrap();
+            assert_eq!(t.want, got);
+        }
+    }
     #[test]
     fn from_internal() {
         struct Test {
