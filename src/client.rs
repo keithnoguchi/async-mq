@@ -3,16 +3,13 @@
 //!
 //! [Client]: struct.Client.html
 //! [Connection]: struct.Connection.html
-use lapin::options::QueueDeclareOptions;
-use lapin::types::FieldTable;
-use lapin::{Channel, ConnectionProperties, Queue, Result};
 use std::default::Default;
 
 /// A non-consuming [Connection] builder.
 ///
 /// [Connection]: struct.Connection.html
 pub struct Client {
-    props: ConnectionProperties,
+    props: lapin::ConnectionProperties,
 }
 
 impl Client {
@@ -21,11 +18,10 @@ impl Client {
             ..Default::default()
         }
     }
-    pub async fn connect(&self, uri: &str) -> Result<Connection> {
-        let c = match lapin::Connection::connect(uri, self.props.clone()).await {
-            Ok(c) => c,
-            Err(err) => return Err(err),
-        };
+    pub async fn connect(&self, uri: &str) -> Result<Connection, crate::Error> {
+        let c = lapin::Connection::connect(uri, self.props.clone())
+            .await
+            .map_err(super::Error::from)?;
         Ok(Connection(c))
     }
 }
@@ -33,7 +29,7 @@ impl Client {
 impl Default for Client {
     fn default() -> Self {
         Self {
-            props: ConnectionProperties::default(),
+            props: lapin::ConnectionProperties::default(),
         }
     }
 }
@@ -63,9 +59,9 @@ impl Connection {
     pub async fn channel(
         &self,
         queue: &str,
-        opts: QueueDeclareOptions,
-        field: FieldTable,
-    ) -> Result<(Channel, Queue)> {
+        opts: lapin::options::QueueDeclareOptions,
+        field: lapin::types::FieldTable,
+    ) -> lapin::Result<(lapin::Channel, lapin::Queue)> {
         let ch = match self.0.create_channel().await {
             Ok(ch) => ch,
             Err(err) => return Err(err),
