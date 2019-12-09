@@ -1,6 +1,6 @@
 # rustmq
 
-Zero-cost [lapin] abstraction [AMQP] client crate
+Zero-cost abstraction [lapin] abstraction [AMQP] client crate
 
 [lapin]: https://crates.io/crates/lapin
 [amqp]: https://www.amqp.org

@@ -736,6 +736,7 @@ name = "rustmq"
 version = "0.3.0"
 dependencies = [
  "async-trait 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cookie-factory 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "flatbuffers 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures-executor 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
