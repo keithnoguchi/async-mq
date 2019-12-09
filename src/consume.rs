@@ -22,6 +22,7 @@ pub struct ConsumerBuilder {
     tx_opts: lapin::options::BasicPublishOptions,
     rx_opts: lapin::options::BasicConsumeOptions,
     ack_opts: lapin::options::BasicAckOptions,
+    nack_opts: lapin::options::BasicNackOptions,
     extension: Box<dyn crate::ConsumerExt + Send>,
 }
 
@@ -37,6 +38,7 @@ impl ConsumerBuilder {
             tx_opts: lapin::options::BasicPublishOptions::default(),
             rx_opts: lapin::options::BasicConsumeOptions::default(),
             ack_opts: lapin::options::BasicAckOptions::default(),
+            nack_opts: lapin::options::BasicNackOptions::default(),
             extension: Box::new(EchoMessager {}),
         }
     }
@@ -57,8 +59,8 @@ impl ConsumerBuilder {
         self.extension = extension;
         self
     }
-    pub async fn build(&self) -> lapin::Result<Consumer> {
-        let (ch, q) = match self
+    pub async fn build(&self) -> Result<Consumer, crate::Error> {
+        let (ch, q) = self
             .conn
             .channel(
                 &self.queue,
@@ -66,11 +68,8 @@ impl ConsumerBuilder {
                 self.field_table.clone(),
             )
             .await
-        {
-            Ok((ch, q)) => (ch, q),
-            Err(err) => return Err(err),
-        };
-        let consume = match ch
+            .map_err(crate::Error::from)?;
+        let consume = ch
             .clone()
             .basic_consume(
                 &q,
@@ -79,16 +78,14 @@ impl ConsumerBuilder {
                 self.field_table.clone(),
             )
             .await
-        {
-            Ok(c) => c,
-            Err(err) => return Err(err),
-        };
+            .map_err(crate::Error::from)?;
         Ok(Consumer {
             ch,
             consume,
             tx_props: self.tx_props.clone(),
             tx_opts: self.tx_opts.clone(),
             ack_opts: self.ack_opts.clone(),
+            nack_opts: self.nack_opts.clone(),
             extension: self.extension.clone(),
         })
     }
@@ -103,6 +100,7 @@ pub struct Consumer {
     tx_props: lapin::BasicProperties,
     tx_opts: lapin::options::BasicPublishOptions,
     ack_opts: lapin::options::BasicAckOptions,
+    nack_opts: lapin::options::BasicNackOptions,
     extension: Box<dyn crate::ConsumerExt + Send>,
 }
 
@@ -114,11 +112,11 @@ impl Consumer {
         self.extension = extension;
         self
     }
-    pub async fn run(&mut self) -> lapin::Result<()> {
+    pub async fn run(&mut self) -> Result<(), crate::Error> {
         while let Some(msg) = self.consume.next().await {
             match msg {
                 Ok(msg) => self.recv(msg).await?,
-                Err(err) => return Err(err),
+                Err(err) => return Err(crate::Error::from(err)),
             }
         }
         Ok(())
@@ -130,25 +128,28 @@ impl Consumer {
     /// the message.
     ///
     /// [ConsumerExt]: trait.ConsumerExt.html
-    async fn recv(&mut self, msg: lapin::message::Delivery) -> lapin::Result<()> {
+    async fn recv(&mut self, msg: lapin::message::Delivery) -> Result<(), crate::Error> {
         let delivery_tag = msg.delivery_tag;
         let reply_to = msg.properties.reply_to();
         match self.extension.recv(msg.data).await {
-            Err(err) => return Err(err),
             Ok(msg) => {
                 if let Some(reply_to) = reply_to {
                     self.send(reply_to.as_str(), &msg).await?;
-                } else {
-                    eprint!("{:?}", msg);
                 }
-                if let Err(err) = self.ch.basic_ack(delivery_tag, self.ack_opts.clone()).await {
-                    return Err(err);
-                }
+                self.ch
+                    .basic_ack(delivery_tag, self.ack_opts.clone())
+                    .await
+                    .map_err(crate::Error::from)?
             }
+            Err(_err) => self
+                .ch
+                .basic_nack(delivery_tag, self.nack_opts.clone())
+                .await
+                .map_err(crate::Error::from)?,
         }
         Ok(())
     }
-    async fn send(&mut self, queue: &str, msg: &[u8]) -> lapin::Result<()> {
+    async fn send(&mut self, queue: &str, msg: &[u8]) -> Result<(), crate::Error> {
         self.ch
             .basic_publish(
                 "",
@@ -157,7 +158,8 @@ impl Consumer {
                 msg.to_vec(),
                 self.tx_props.clone(),
             )
-            .await?;
+            .await
+            .map_err(crate::Error::from)?;
         Ok(())
     }
 }
@@ -170,7 +172,7 @@ pub trait ConsumerExt {
     /// Async method to transfer the message to [ConsumerExt] implementor.
     ///
     /// [ConsumerExt]: trait.ConsumerExt.html
-    async fn recv(&mut self, msg: Vec<u8>) -> lapin::Result<Vec<u8>>;
+    async fn recv(&mut self, msg: Vec<u8>) -> Result<Vec<u8>, crate::Error>;
     fn box_clone(&self) -> Box<dyn ConsumerExt + Send>;
 }
 
@@ -190,7 +192,7 @@ pub struct EchoMessager;
 #[async_trait]
 impl ConsumerExt for EchoMessager {
     /// Echoe back the received message.
-    async fn recv(&mut self, msg: Vec<u8>) -> lapin::Result<Vec<u8>> {
+    async fn recv(&mut self, msg: Vec<u8>) -> Result<Vec<u8>, crate::Error> {
         Ok(msg)
     }
     fn box_clone(&self) -> Box<dyn ConsumerExt + Send> {

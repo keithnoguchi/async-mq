@@ -21,7 +21,7 @@ impl Client {
     pub async fn connect(&self, uri: &str) -> Result<Connection, crate::Error> {
         let c = lapin::Connection::connect(uri, self.props.clone())
             .await
-            .map_err(super::Error::from)?;
+            .map_err(crate::Error::from)?;
         Ok(Connection(c))
     }
 }

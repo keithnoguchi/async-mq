@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use flatbuffers::FlatBufferBuilder;
 use futures_executor::{block_on, LocalPool, LocalSpawner};
 use futures_util::task::LocalSpawnExt;
-use lapin::Result;
+use lapin;
 use rustmq::prelude::*;
 use std::{env, thread};
 
@@ -20,7 +20,7 @@ fn main() -> thread::Result<()> {
     for _ in 0..producers.capacity() {
         let builder = builder.clone();
         let producer = thread::spawn(move || {
-            ASCIIGenerator::new(builder).run().expect("generator died");
+            MatrixGenerator::new(builder).run().expect("generator died");
         });
         producers.push(producer);
     }
@@ -50,15 +50,15 @@ fn main() -> thread::Result<()> {
     Ok(())
 }
 
-struct ASCIIGenerator {
+struct MatrixGenerator {
     builder: ProducerBuilder,
 }
 
-impl ASCIIGenerator {
+impl MatrixGenerator {
     fn new(builder: ProducerBuilder) -> Self {
         Self { builder }
     }
-    fn run(&mut self) -> Result<()> {
+    fn run(&mut self) -> lapin::Result<()> {
         let mut builder = self.builder.clone();
         builder.with_ext(Box::new(NoopPeeker {}));
         let mut pool = LocalPool::new();
@@ -170,7 +170,7 @@ struct EchoMessage;
 
 #[async_trait]
 impl ConsumerExt for EchoMessage {
-    async fn recv(&mut self, msg: Vec<u8>) -> lapin::Result<Vec<u8>> {
+    async fn recv(&mut self, msg: Vec<u8>) -> Result<Vec<u8>, rustmq::Error> {
         Ok(msg)
     }
     fn box_clone(&self) -> Box<dyn ConsumerExt + Send> {
