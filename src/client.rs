@@ -5,9 +5,10 @@
 //! [Connection]: struct.Connection.html
 use std::default::Default;
 
-/// A non-consuming [Connection] builder.
+/// A [non-consuming] [Connection] builder.
 ///
 /// [Connection]: struct.Connection.html
+/// [non-consuming]: https://doc.rust-lang.org/1.0.0/style/ownership/builders.html#non-consuming-builders-(preferred):
 pub struct Client {
     props: lapin::ConnectionProperties,
 }
@@ -34,23 +35,26 @@ impl Default for Client {
     }
 }
 
-/// A non-consuming [ProducerBuilder] and [ConsumerBuilder] builder.
+/// A [non-consuming] [ProducerBuilder] and [ConsumerBuilder] builder.
 ///
 /// [ProducerBuilder]: ../produce/struct.ProducerBuilder.html
 /// [ConsumerBuilder]: ../consume/struct.ConsumerBuilder.html
+/// [non-consuming]: https://doc.rust-lang.org/1.0.0/style/ownership/builders.html#non-consuming-builders-(preferred):
 #[derive(Clone)]
 pub struct Connection(lapin::Connection);
 
 impl Connection {
-    /// Build a non-consuming [ProducerBuilder].
+    /// Build a [non-consuming] [ProducerBuilder].
     ///
     /// [ProducerBuilder]: ../consume/struct.ProducerBuilder.html
+    /// [non-consuming]: https://doc.rust-lang.org/1.0.0/style/ownership/builders.html#non-consuming-builders-(preferred):
     pub fn producer_builder(&self) -> crate::ProducerBuilder {
         crate::ProducerBuilder::new(self.clone())
     }
-    /// Build a non-consuming [ConsumerBuilder].
+    /// Build a [non-consuming] [ConsumerBuilder].
     ///
     /// [ConsumerBuilder]: ../consume/struct.ConsumerBuilder.html
+    /// [non-consuming]: https://doc.rust-lang.org/1.0.0/style/ownership/builders.html#non-consuming-builders-(preferred):
     pub fn consumer_builder(&self) -> crate::ConsumerBuilder {
         crate::ConsumerBuilder::new(self.clone())
     }

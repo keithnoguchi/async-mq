@@ -8,9 +8,10 @@ use async_trait::async_trait;
 use futures_util::stream::StreamExt;
 use lapin;
 
-/// A [Producer] builder.
+/// A [non-consuming] [Producer] builder.
 ///
 /// [Producer]: struct.Producer.html
+/// [non-consuming]: https://doc.rust-lang.org/1.0.0/style/ownership/builders.html#non-consuming-builders-(preferred):
 #[derive(Clone)]
 pub struct ProducerBuilder {
     conn: crate::Connection,
