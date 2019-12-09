@@ -13,6 +13,10 @@ pub mod consume;
 pub mod error;
 pub mod produce;
 
+/// Crate local type aliases for less typing.  Those are meant for the
+/// internal use cases and won't be published.
+type Result<T> = std::result::Result<T, error::Error>;
+
 /// A "prelude" for the crate
 ///
 /// This prelude is similar to the standard library's prelude in that you'll

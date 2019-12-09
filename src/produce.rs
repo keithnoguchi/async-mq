@@ -57,7 +57,7 @@ impl ProducerBuilder {
         self.extension = extension;
         self
     }
-    pub async fn build(&self) -> Result<Producer, crate::Error> {
+    pub async fn build(&self) -> crate::Result<Producer> {
         let tx = self
             .conn
             .channel(
@@ -66,8 +66,7 @@ impl ProducerBuilder {
                 self.field_table.clone(),
             )
             .await
-            .map(|(ch, _)| ch)
-            .map_err(crate::Error::from)?;
+            .map(|(ch, _)| ch)?;
         let opts = lapin::options::QueueDeclareOptions {
             exclusive: true,
             auto_delete: true,
@@ -76,8 +75,7 @@ impl ProducerBuilder {
         let (rx, q) = self
             .conn
             .channel("", opts, self.field_table.clone())
-            .await
-            .map_err(crate::Error::from)?;
+            .await?;
         let consume = rx
             .basic_consume(
                 &q,
@@ -128,7 +126,7 @@ impl Producer {
         self.extension = extension;
         self
     }
-    pub async fn publish(&mut self, msg: Vec<u8>) -> Result<(), crate::Error> {
+    pub async fn publish(&mut self, msg: Vec<u8>) -> crate::Result<()> {
         self.tx
             .basic_publish(
                 &self.ex,
@@ -141,7 +139,7 @@ impl Producer {
             .map_err(crate::Error::from)?;
         Ok(())
     }
-    pub async fn rpc(&mut self, msg: Vec<u8>) -> Result<Vec<u8>, crate::Error> {
+    pub async fn rpc(&mut self, msg: Vec<u8>) -> crate::Result<Vec<u8>> {
         self.tx
             .basic_publish(
                 &self.ex,
@@ -160,7 +158,7 @@ impl Producer {
         }
         Ok(vec![])
     }
-    async fn recv(&mut self, msg: lapin::message::Delivery) -> Result<Vec<u8>, crate::Error> {
+    async fn recv(&mut self, msg: lapin::message::Delivery) -> crate::Result<Vec<u8>> {
         let delivery_tag = msg.delivery_tag;
         match self.extension.peek(msg.data).await {
             Ok(msg) => {
@@ -186,7 +184,7 @@ impl Producer {
 /// [Producer]: struct.Producer.html
 #[async_trait]
 pub trait ProducerExt {
-    async fn peek(&mut self, msg: Vec<u8>) -> Result<Vec<u8>, crate::Error>;
+    async fn peek(&mut self, msg: Vec<u8>) -> crate::Result<Vec<u8>>;
     fn box_clone(&self) -> Box<dyn ProducerExt + Send>;
 }
 
@@ -206,7 +204,7 @@ pub struct NoopPeeker;
 
 #[async_trait]
 impl ProducerExt for NoopPeeker {
-    async fn peek(&mut self, msg: Vec<u8>) -> Result<Vec<u8>, crate::Error> {
+    async fn peek(&mut self, msg: Vec<u8>) -> crate::Result<Vec<u8>> {
         Ok(msg)
     }
     fn box_clone(&self) -> Box<dyn ProducerExt + Send> {

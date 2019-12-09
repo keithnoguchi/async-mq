@@ -18,7 +18,7 @@ impl Client {
             ..Default::default()
         }
     }
-    pub async fn connect(&self, uri: &str) -> Result<Connection, crate::Error> {
+    pub async fn connect(&self, uri: &str) -> crate::Result<Connection> {
         let c = lapin::Connection::connect(uri, self.props.clone())
             .await
             .map_err(crate::Error::from)?;
@@ -61,15 +61,12 @@ impl Connection {
         queue: &str,
         opts: lapin::options::QueueDeclareOptions,
         field: lapin::types::FieldTable,
-    ) -> lapin::Result<(lapin::Channel, lapin::Queue)> {
-        let ch = match self.0.create_channel().await {
-            Ok(ch) => ch,
-            Err(err) => return Err(err),
-        };
-        let q = match ch.queue_declare(queue, opts, field).await {
-            Ok(q) => q,
-            Err(err) => return Err(err),
-        };
+    ) -> crate::Result<(lapin::Channel, lapin::Queue)> {
+        let ch = self.0.create_channel().await.map_err(crate::Error::from)?;
+        let q = ch
+            .queue_declare(queue, opts, field)
+            .await
+            .map_err(crate::Error::from)?;
         Ok((ch, q))
     }
 }

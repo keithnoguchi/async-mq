@@ -59,7 +59,7 @@ impl ConsumerBuilder {
         self.extension = extension;
         self
     }
-    pub async fn build(&self) -> Result<Consumer, crate::Error> {
+    pub async fn build(&self) -> crate::Result<Consumer> {
         let (ch, q) = self
             .conn
             .channel(
@@ -67,8 +67,7 @@ impl ConsumerBuilder {
                 self.queue_opts.clone(),
                 self.field_table.clone(),
             )
-            .await
-            .map_err(crate::Error::from)?;
+            .await?;
         let consume = ch
             .clone()
             .basic_consume(
@@ -112,7 +111,7 @@ impl Consumer {
         self.extension = extension;
         self
     }
-    pub async fn run(&mut self) -> Result<(), crate::Error> {
+    pub async fn run(&mut self) -> crate::Result<()> {
         while let Some(msg) = self.consume.next().await {
             match msg {
                 Ok(msg) => self.recv(msg).await?,
@@ -128,7 +127,7 @@ impl Consumer {
     /// the message.
     ///
     /// [ConsumerExt]: trait.ConsumerExt.html
-    async fn recv(&mut self, msg: lapin::message::Delivery) -> Result<(), crate::Error> {
+    async fn recv(&mut self, msg: lapin::message::Delivery) -> crate::Result<()> {
         let delivery_tag = msg.delivery_tag;
         let reply_to = msg.properties.reply_to();
         match self.extension.recv(msg.data).await {
@@ -149,7 +148,7 @@ impl Consumer {
         }
         Ok(())
     }
-    async fn send(&mut self, queue: &str, msg: &[u8]) -> Result<(), crate::Error> {
+    async fn send(&mut self, queue: &str, msg: &[u8]) -> crate::Result<()> {
         self.ch
             .basic_publish(
                 "",
@@ -172,7 +171,7 @@ pub trait ConsumerExt {
     /// Async method to transfer the message to [ConsumerExt] implementor.
     ///
     /// [ConsumerExt]: trait.ConsumerExt.html
-    async fn recv(&mut self, msg: Vec<u8>) -> Result<Vec<u8>, crate::Error>;
+    async fn recv(&mut self, msg: Vec<u8>) -> crate::Result<Vec<u8>>;
     fn box_clone(&self) -> Box<dyn ConsumerExt + Send>;
 }
 
@@ -192,7 +191,7 @@ pub struct EchoMessager;
 #[async_trait]
 impl ConsumerExt for EchoMessager {
     /// Echoe back the received message.
-    async fn recv(&mut self, msg: Vec<u8>) -> Result<Vec<u8>, crate::Error> {
+    async fn recv(&mut self, msg: Vec<u8>) -> crate::Result<Vec<u8>> {
         Ok(msg)
     }
     fn box_clone(&self) -> Box<dyn ConsumerExt + Send> {
