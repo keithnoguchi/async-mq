@@ -57,8 +57,8 @@ impl ProducerBuilder {
         self.extension = extension;
         self
     }
-    pub async fn build(&self) -> lapin::Result<Producer> {
-        let tx = match self
+    pub async fn build(&self) -> Result<Producer, crate::Error> {
+        let tx = self
             .conn
             .channel(
                 &self.queue,
@@ -66,20 +66,19 @@ impl ProducerBuilder {
                 self.field_table.clone(),
             )
             .await
-        {
-            Ok((ch, _)) => ch,
-            Err(err) => return Err(err),
-        };
+            .map(|(ch, _)| ch)
+            .map_err(crate::Error::from)?;
         let opts = lapin::options::QueueDeclareOptions {
             exclusive: true,
             auto_delete: true,
             ..self.queue_opts.clone()
         };
-        let (rx, q) = match self.conn.channel("", opts, self.field_table.clone()).await {
-            Ok((ch, q)) => (ch, q),
-            Err(err) => return Err(err),
-        };
-        let consume = match rx
+        let (rx, q) = self
+            .conn
+            .channel("", opts, self.field_table.clone())
+            .await
+            .map_err(crate::Error::from)?;
+        let consume = rx
             .basic_consume(
                 &q,
                 "producer",
@@ -87,10 +86,7 @@ impl ProducerBuilder {
                 self.field_table.clone(),
             )
             .await
-        {
-            Ok(c) => c,
-            Err(err) => return Err(err),
-        };
+            .map_err(crate::Error::from)?;
         Ok(Producer {
             tx,
             rx,
@@ -132,7 +128,7 @@ impl Producer {
         self.extension = extension;
         self
     }
-    pub async fn publish(&mut self, msg: Vec<u8>) -> lapin::Result<()> {
+    pub async fn publish(&mut self, msg: Vec<u8>) -> Result<(), crate::Error> {
         self.tx
             .basic_publish(
                 &self.ex,
@@ -142,10 +138,11 @@ impl Producer {
                 self.tx_props.clone(),
             )
             .await
+            .map_err(crate::Error::from)?;
+        Ok(())
     }
-    pub async fn rpc(&mut self, msg: Vec<u8>) -> lapin::Result<Vec<u8>> {
-        if let Err(err) = self
-            .tx
+    pub async fn rpc(&mut self, msg: Vec<u8>) -> Result<Vec<u8>, crate::Error> {
+        self.tx
             .basic_publish(
                 &self.ex,
                 &self.queue,
@@ -154,37 +151,30 @@ impl Producer {
                 self.rx_props.clone(),
             )
             .await
-        {
-            return Err(err);
-        }
+            .map_err(crate::Error::from)?;
         if let Some(msg) = self.consume.next().await {
             match msg {
-                Ok(msg) => match self.recv(msg).await {
-                    Ok(msg) => return Ok(msg),
-                    Err(err) => return Err(err),
-                },
-                Err(err) => return Err(err),
+                Ok(msg) => return self.recv(msg).await,
+                Err(err) => return Err(crate::Error::from(err)),
             }
         }
         Ok(vec![])
     }
-    async fn recv(&mut self, msg: lapin::message::Delivery) -> lapin::Result<Vec<u8>> {
+    async fn recv(&mut self, msg: lapin::message::Delivery) -> Result<Vec<u8>, crate::Error> {
         let delivery_tag = msg.delivery_tag;
         match self.extension.peek(msg.data).await {
             Ok(msg) => {
-                if let Err(err) = self.rx.basic_ack(delivery_tag, self.ack_opts.clone()).await {
-                    return Err(err);
-                }
+                self.rx
+                    .basic_ack(delivery_tag, self.ack_opts.clone())
+                    .await
+                    .map_err(crate::Error::from)?;
                 Ok(msg)
             }
             Err(_err) => {
-                if let Err(err) = self
-                    .rx
+                self.rx
                     .basic_nack(delivery_tag, self.nack_opts.clone())
                     .await
-                {
-                    return Err(err);
-                }
+                    .map_err(crate::Error::from)?;
                 Ok(vec![])
             }
         }
@@ -196,7 +186,7 @@ impl Producer {
 /// [Producer]: struct.Producer.html
 #[async_trait]
 pub trait ProducerExt {
-    async fn peek(&mut self, msg: Vec<u8>) -> lapin::Result<Vec<u8>>;
+    async fn peek(&mut self, msg: Vec<u8>) -> Result<Vec<u8>, crate::Error>;
     fn box_clone(&self) -> Box<dyn ProducerExt + Send>;
 }
 
@@ -216,7 +206,7 @@ pub struct NoopPeeker;
 
 #[async_trait]
 impl ProducerExt for NoopPeeker {
-    async fn peek(&mut self, msg: Vec<u8>) -> lapin::Result<Vec<u8>> {
+    async fn peek(&mut self, msg: Vec<u8>) -> Result<Vec<u8>, crate::Error> {
         Ok(msg)
     }
     fn box_clone(&self) -> Box<dyn ProducerExt + Send> {

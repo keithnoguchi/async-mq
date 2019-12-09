@@ -3,7 +3,6 @@ use async_trait::async_trait;
 use flatbuffers::FlatBufferBuilder;
 use futures_executor::{block_on, LocalPool, LocalSpawner};
 use futures_util::task::LocalSpawnExt;
-use lapin;
 use rustmq::prelude::*;
 use std::{env, thread};
 
@@ -20,7 +19,7 @@ fn main() -> thread::Result<()> {
     for _ in 0..producers.capacity() {
         let builder = builder.clone();
         let producer = thread::spawn(move || {
-            MatrixGenerator::new(builder).run().expect("generator died");
+            ASCIIGenerator::new(builder).run().expect("generator died");
         });
         producers.push(producer);
     }
@@ -50,15 +49,15 @@ fn main() -> thread::Result<()> {
     Ok(())
 }
 
-struct MatrixGenerator {
+struct ASCIIGenerator {
     builder: ProducerBuilder,
 }
 
-impl MatrixGenerator {
+impl ASCIIGenerator {
     fn new(builder: ProducerBuilder) -> Self {
         Self { builder }
     }
-    fn run(&mut self) -> lapin::Result<()> {
+    fn run(&mut self) -> Result<(), rustmq::Error> {
         let mut builder = self.builder.clone();
         builder.with_ext(Box::new(NoopPeeker {}));
         let mut pool = LocalPool::new();
@@ -103,7 +102,7 @@ struct NoopPeeker;
 
 #[async_trait]
 impl ProducerExt for NoopPeeker {
-    async fn peek(&mut self, msg: Vec<u8>) -> lapin::Result<Vec<u8>> {
+    async fn peek(&mut self, msg: Vec<u8>) -> Result<Vec<u8>, rustmq::Error> {
         // Nothing to do now.
         Ok(msg)
     }
@@ -120,7 +119,7 @@ struct DropPeeker;
 impl ProducerExt for DropPeeker {
     /// Just comsume the received message so that no message print out
     /// to the console.  This is good for the benchmarking.
-    async fn peek(&mut self, _msg: Vec<u8>) -> lapin::Result<Vec<u8>> {
+    async fn peek(&mut self, _msg: Vec<u8>) -> Result<Vec<u8>, rustmq::Error> {
         Ok(vec![])
     }
     fn box_clone(&self) -> Box<dyn ProducerExt + Send> {
