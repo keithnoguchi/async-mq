@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: APACHE-2.0 AND MIT
-//! [ConsumerBuilder], [Consumer] structs, and [ConsumerExt] trait
+//! [ConsumerBuilder], [Consumer] structs, and [ConsumerHandler] trait
 //!
 //! [ConsumerBuilder]: struct.ConsumerBuilder.html
 //! [Consumer]: struct.Consumer.html
-//! [ConsumerExt]: trait.ConsumerExt.html
+//! [ConsumerHandler]: trait.ConsumerHandler.html
 use async_trait::async_trait;
 use futures_util::stream::StreamExt;
 use lapin;
@@ -24,7 +24,7 @@ pub struct ConsumerBuilder {
     rx_opts: lapin::options::BasicConsumeOptions,
     ack_opts: lapin::options::BasicAckOptions,
     nack_opts: lapin::options::BasicNackOptions,
-    extension: Box<dyn crate::ConsumerExt + Send>,
+    handler: Box<dyn crate::ConsumerHandler + Send>,
 }
 
 impl ConsumerBuilder {
@@ -40,7 +40,7 @@ impl ConsumerBuilder {
             rx_opts: lapin::options::BasicConsumeOptions::default(),
             ack_opts: lapin::options::BasicAckOptions::default(),
             nack_opts: lapin::options::BasicNackOptions::default(),
-            extension: Box::new(EchoMessenger {}),
+            handler: Box::new(EchoMessenger {}),
         }
     }
     /// Override the default exchange name.
@@ -53,11 +53,11 @@ impl ConsumerBuilder {
         self.queue = queue;
         self
     }
-    /// Use the provided [ConsumerExt] trait object.
+    /// Use the provided [ConsumerHandler] trait object.
     ///
-    /// [ConsumerExt]: trait.ConsumerExt.html
-    pub fn with_ext(&mut self, extension: Box<dyn crate::ConsumerExt + Send>) -> &mut Self {
-        self.extension = extension;
+    /// [ConsumerHandler]: trait.ConsumerHandler.html
+    pub fn with_handler(&mut self, handler: Box<dyn crate::ConsumerHandler + Send>) -> &mut Self {
+        self.handler = handler;
         self
     }
     pub async fn build(&self) -> crate::Result<Consumer> {
@@ -86,7 +86,7 @@ impl ConsumerBuilder {
             tx_opts: self.tx_opts.clone(),
             ack_opts: self.ack_opts.clone(),
             nack_opts: self.nack_opts.clone(),
-            extension: self.extension.clone(),
+            handler: self.handler.clone(),
         })
     }
 }
@@ -101,15 +101,15 @@ pub struct Consumer {
     tx_opts: lapin::options::BasicPublishOptions,
     ack_opts: lapin::options::BasicAckOptions,
     nack_opts: lapin::options::BasicNackOptions,
-    extension: Box<dyn crate::ConsumerExt + Send>,
+    handler: Box<dyn crate::ConsumerHandler + Send>,
 }
 
 impl Consumer {
-    /// Use the provided [ConsumerExt] trait object.
+    /// Use the provided [ConsumerHandler] trait object.
     ///
-    /// [ConsumerExt]: trait.ConsumerExt.html
-    pub fn with_ext(&mut self, extension: Box<dyn crate::ConsumerExt + Send>) -> &mut Self {
-        self.extension = extension;
+    /// [ConsumerHandler]: trait.ConsumerHandler.html
+    pub fn with_handler(&mut self, handler: Box<dyn crate::ConsumerHandler + Send>) -> &mut Self {
+        self.handler = handler;
         self
     }
     pub async fn run(&mut self) -> crate::Result<()> {
@@ -121,17 +121,17 @@ impl Consumer {
         }
         Ok(())
     }
-    /// Transfer the received message to [ConsumerExt] and acknowledge
-    /// it to the broker, or nack in case [ConsumerExt] implementor returns
+    /// Transfer the received message to [ConsumerHandler] and acknowledge
+    /// it to the broker, or nack in case [ConsumerHandler] implementor returns
     /// error.  In case of the message contains `reply_to` field, it will
     /// send back to the response queue specified in `reply_to` field in
     /// the message.
     ///
-    /// [ConsumerExt]: trait.ConsumerExt.html
+    /// [ConsumerHandler]: trait.ConsumerHandler.html
     async fn recv(&mut self, msg: lapin::message::Delivery) -> crate::Result<()> {
         let delivery_tag = msg.delivery_tag;
         let reply_to = msg.properties.reply_to();
-        match self.extension.recv(msg.data).await {
+        match self.handler.recv(msg.data).await {
             Ok(msg) => {
                 if let Some(reply_to) = reply_to {
                     self.send(reply_to.as_str(), &msg).await?;
@@ -168,34 +168,34 @@ impl Consumer {
 ///
 /// [Consumer]: struct.Consumer.html
 #[async_trait]
-pub trait ConsumerExt {
-    /// Async method to transfer the message to [ConsumerExt] implementor.
+pub trait ConsumerHandler {
+    /// Async method to transfer the message to [ConsumerHandler] implementor.
     ///
-    /// [ConsumerExt]: trait.ConsumerExt.html
+    /// [ConsumerHandler]: trait.ConsumerHandler.html
     async fn recv(&mut self, msg: Vec<u8>) -> crate::Result<Vec<u8>>;
-    fn box_clone(&self) -> Box<dyn ConsumerExt + Send>;
+    fn box_clone(&self) -> Box<dyn ConsumerHandler + Send>;
 }
 
 // https://users.rust-lang.org/t/solved-is-it-possible-to-clone-a-boxed-trait-object/1714/6
-impl Clone for Box<dyn ConsumerExt + Send> {
-    fn clone(&self) -> Box<dyn ConsumerExt + Send> {
+impl Clone for Box<dyn ConsumerHandler + Send> {
+    fn clone(&self) -> Box<dyn ConsumerHandler + Send> {
         self.box_clone()
     }
 }
 
-/// A default [ConsumerExt] implementor that echoes back the received message.
+/// A default [ConsumerHandler] implementor that echoes back the received message.
 ///
-/// [ConsumerExt]: trait.ConsumerExt.html
+/// [ConsumerHandler]: trait.ConsumerHandler.html
 #[derive(Clone)]
 pub struct EchoMessenger;
 
 #[async_trait]
-impl ConsumerExt for EchoMessenger {
+impl ConsumerHandler for EchoMessenger {
     /// Echoe back the received message.
     async fn recv(&mut self, msg: Vec<u8>) -> crate::Result<Vec<u8>> {
         Ok(msg)
     }
-    fn box_clone(&self) -> Box<dyn ConsumerExt + Send> {
+    fn box_clone(&self) -> Box<dyn ConsumerHandler + Send> {
         Box::new((*self).clone())
     }
 }

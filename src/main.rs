@@ -59,7 +59,7 @@ impl ASCIIGenerator {
     }
     fn run(&mut self) -> Result<(), rustmq::Error> {
         let mut builder = self.builder.clone();
-        builder.with_ext(Box::new(NoopPeeker {}));
+        builder.with_handler(Box::new(NoopPeeker {}));
         let mut pool = LocalPool::new();
         pool.run_until(async move {
             let mut producer = builder.build().await?;
@@ -101,12 +101,12 @@ impl ASCIIGenerator {
 struct NoopPeeker;
 
 #[async_trait]
-impl ProducerExt for NoopPeeker {
+impl ProducerHandler for NoopPeeker {
     async fn peek(&mut self, msg: Vec<u8>) -> Result<Vec<u8>, rustmq::Error> {
         // Nothing to do now.
         Ok(msg)
     }
-    fn box_clone(&self) -> Box<dyn ProducerExt + Send> {
+    fn box_clone(&self) -> Box<dyn ProducerHandler + Send> {
         Box::new((*self).clone())
     }
 }
@@ -116,13 +116,13 @@ impl ProducerExt for NoopPeeker {
 struct DropPeeker;
 
 #[async_trait]
-impl ProducerExt for DropPeeker {
+impl ProducerHandler for DropPeeker {
     /// Just comsume the received message so that no message print out
     /// to the console.  This is good for the benchmarking.
     async fn peek(&mut self, _msg: Vec<u8>) -> Result<Vec<u8>, rustmq::Error> {
         Ok(vec![])
     }
-    fn box_clone(&self) -> Box<dyn ProducerExt + Send> {
+    fn box_clone(&self) -> Box<dyn ProducerHandler + Send> {
         Box::new((*self).clone())
     }
 }
@@ -151,7 +151,7 @@ impl LocalConsumerManager {
         let spawner = self.spawner.clone();
         self.spawner
             .spawn_local(async move {
-                builder.with_ext(Box::new(EchoMessenger {}));
+                builder.with_handler(Box::new(EchoMessenger {}));
                 for _ in 0..consumers {
                     let mut consumer = builder.build().await.expect("consumer build failed");
                     let _task = spawner.spawn_local(async move {
@@ -168,11 +168,11 @@ impl LocalConsumerManager {
 struct EchoMessenger;
 
 #[async_trait]
-impl ConsumerExt for EchoMessenger {
+impl ConsumerHandler for EchoMessenger {
     async fn recv(&mut self, msg: Vec<u8>) -> Result<Vec<u8>, rustmq::Error> {
         Ok(msg)
     }
-    fn box_clone(&self) -> Box<dyn ConsumerExt + Send> {
+    fn box_clone(&self) -> Box<dyn ConsumerHandler + Send> {
         Box::new((*self).clone())
     }
 }

@@ -4,9 +4,9 @@
 //! [lapin]: https://crates.io/crates/lapin
 //! [amqp]: https://www.amqp.org
 pub use client::{Client, Connection};
-pub use consume::{Consumer, ConsumerBuilder, ConsumerExt};
+pub use consume::{Consumer, ConsumerBuilder, ConsumerHandler};
 pub use error::Error;
-pub use produce::{Producer, ProducerBuilder, ProducerExt};
+pub use produce::{Producer, ProducerBuilder, ProducerHandler};
 
 pub mod client;
 pub mod consume;
@@ -28,7 +28,7 @@ pub mod prelude {
     #[doc(no_inline)]
     pub use crate::{Client, Connection};
     #[doc(no_inline)]
-    pub use crate::{Consumer, ConsumerBuilder, ConsumerExt};
+    pub use crate::{Consumer, ConsumerBuilder, ConsumerHandler};
     #[doc(no_inline)]
-    pub use crate::{Producer, ProducerBuilder, ProducerExt};
+    pub use crate::{Producer, ProducerBuilder, ProducerHandler};
 }
