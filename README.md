@@ -133,7 +133,7 @@ impl rustmq::ProducerExt for FlatBufferPrinter {
 }
 ```
 
-And are the consumer side:
+And the consumer side:
 
 ```sh
 struct LocalConsumerManager {
