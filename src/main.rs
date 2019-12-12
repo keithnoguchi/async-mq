@@ -7,6 +7,7 @@ use rustmq::prelude::*;
 use std::{env, thread};
 
 fn main() -> thread::Result<()> {
+    let mut threads = Vec::with_capacity(PRODUCER_THREAD_NR + CONSUMER_THREAD_NR);
     let client = Client::new();
     let queue_name = "hello";
     let uri = parse();
@@ -15,36 +16,29 @@ fn main() -> thread::Result<()> {
     let conn = block_on(client.connect(&uri)).expect("fail to connect");
     let mut builder = conn.producer_builder();
     builder.queue(String::from(queue_name));
-    let mut producers = Vec::with_capacity(PRODUCER_THREAD_NR);
-    for _ in 0..producers.capacity() {
+    for _ in 0..PRODUCER_THREAD_NR {
         let builder = builder.clone();
         let producer = thread::spawn(move || {
             ASCIIGenerator::new(builder).run().expect("generator died");
         });
-        producers.push(producer);
+        threads.push(producer);
     }
 
     // A single connection for multiple consumers.
     let conn = block_on(client.connect(&uri)).expect("fail to connect");
     let mut builder = conn.consumer_builder();
     builder.queue(String::from(queue_name));
-    let mut consumers = Vec::with_capacity(CONSUMER_THREAD_NR);
-    for _ in 0..consumers.capacity() {
+    for _ in 0..CONSUMER_THREAD_NR {
         let builder = builder.clone();
         let consumer = thread::spawn(move || {
             LocalConsumerManager::new(builder, CONSUMER_INSTANCE_NR).run();
         });
-        consumers.push(consumer);
+        threads.push(consumer);
     }
 
     // Cleanup all instances.
-    while !producers.is_empty() {
-        let producer = producers.pop().unwrap();
-        producer.join()?;
-    }
-    while !consumers.is_empty() {
-        let consumer = consumers.pop().unwrap();
-        consumer.join()?;
+    for t in threads {
+        t.join()?;
     }
     Ok(())
 }
