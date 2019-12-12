@@ -106,7 +106,7 @@ impl ProducerHandler for NoopPeeker {
         // Nothing to do now.
         Ok(msg)
     }
-    fn box_clone(&self) -> Box<dyn ProducerHandler + Send> {
+    fn boxed_clone(&self) -> Box<dyn ProducerHandler + Send> {
         Box::new((*self).clone())
     }
 }
@@ -122,7 +122,7 @@ impl ProducerHandler for DropPeeker {
     async fn peek(&mut self, _msg: Vec<u8>) -> Result<Vec<u8>, rustmq::Error> {
         Ok(vec![])
     }
-    fn box_clone(&self) -> Box<dyn ProducerHandler + Send> {
+    fn boxed_clone(&self) -> Box<dyn ProducerHandler + Send> {
         Box::new((*self).clone())
     }
 }
@@ -147,11 +147,11 @@ impl LocalConsumerManager {
     }
     fn run(mut self) {
         let mut builder = self.builder.clone();
+        builder.with_handler(Box::new(EchoMessenger {}));
         let consumers = self.consumers;
         let spawner = self.spawner.clone();
         self.spawner
             .spawn_local(async move {
-                builder.with_handler(Box::new(EchoMessenger {}));
                 for _ in 0..consumers {
                     let mut consumer = builder.build().await.expect("consumer build failed");
                     let _task = spawner.spawn_local(async move {
@@ -172,7 +172,7 @@ impl ConsumerHandler for EchoMessenger {
     async fn recv(&mut self, msg: Vec<u8>) -> Result<Vec<u8>, rustmq::Error> {
         Ok(msg)
     }
-    fn box_clone(&self) -> Box<dyn ConsumerHandler + Send> {
+    fn boxed_clone(&self) -> Box<dyn ConsumerHandler + Send> {
         Box::new((*self).clone())
     }
 }

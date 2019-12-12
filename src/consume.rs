@@ -173,13 +173,13 @@ pub trait ConsumerHandler {
     ///
     /// [ConsumerHandler]: trait.ConsumerHandler.html
     async fn recv(&mut self, msg: Vec<u8>) -> crate::Result<Vec<u8>>;
-    fn box_clone(&self) -> Box<dyn ConsumerHandler + Send>;
+    fn boxed_clone(&self) -> Box<dyn ConsumerHandler + Send>;
 }
 
 // https://users.rust-lang.org/t/solved-is-it-possible-to-clone-a-boxed-trait-object/1714/6
 impl Clone for Box<dyn ConsumerHandler + Send> {
     fn clone(&self) -> Box<dyn ConsumerHandler + Send> {
-        self.box_clone()
+        self.boxed_clone()
     }
 }
 
@@ -195,7 +195,7 @@ impl ConsumerHandler for EchoMessenger {
     async fn recv(&mut self, msg: Vec<u8>) -> crate::Result<Vec<u8>> {
         Ok(msg)
     }
-    fn box_clone(&self) -> Box<dyn ConsumerHandler + Send> {
+    fn boxed_clone(&self) -> Box<dyn ConsumerHandler + Send> {
         Box::new((*self).clone())
     }
 }

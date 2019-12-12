@@ -186,13 +186,13 @@ impl Producer {
 #[async_trait]
 pub trait ProducerHandler {
     async fn peek(&mut self, msg: Vec<u8>) -> crate::Result<Vec<u8>>;
-    fn box_clone(&self) -> Box<dyn ProducerHandler + Send>;
+    fn boxed_clone(&self) -> Box<dyn ProducerHandler + Send>;
 }
 
 // https://users.rust-lang.org/t/solved-is-it-possible-to-clone-a-boxed-trait-object/1714/6
 impl Clone for Box<dyn ProducerHandler + Send> {
     fn clone(&self) -> Box<dyn ProducerHandler + Send> {
-        self.box_clone()
+        self.boxed_clone()
     }
 }
 
@@ -208,7 +208,7 @@ impl ProducerHandler for NoopPeeker {
     async fn peek(&mut self, msg: Vec<u8>) -> crate::Result<Vec<u8>> {
         Ok(msg)
     }
-    fn box_clone(&self) -> Box<dyn ProducerHandler + Send> {
+    fn boxed_clone(&self) -> Box<dyn ProducerHandler + Send> {
         Box::new((*self).clone())
     }
 }
