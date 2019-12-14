@@ -277,12 +277,15 @@ amq.gen-AiKQaNiz73V9du8EtgKfMg  0
 - [Crate lapin]: RabbitMQ crate based on AMQP 0.9.1 specification
   - [Lapin futures 0.3 example]: [Crate futures 0.3] example.
 - [Crate futures 0.3]: Abstructions for Asynchronous Programming
+  - [Rust streams] by [Yoshua Wuyts]
 - [tokio 0.2]
   - [The tokio Book]
   - [Making the Tokio 0.2 scheduler 10x faster]
   - [crate Metal I/O]
   - [tokio 0.1 internals]
 - [Original futures design]: Original futures design by [Aaron Turon]
+
+Happy Hacking!
 
 [the async book]: https://rust-lang.github.io/async-book/
 [async in traits]: https://rust-lang.github.io/async-book/07_workarounds/06_async_in_traits.html
@@ -295,6 +298,7 @@ amq.gen-AiKQaNiz73V9du8EtgKfMg  0
 [lapin futures 0.3 example]: https://github.com/sozu-proxy/lapin/blob/master/examples/pubsub_futures.rs
 [crate lapin-futures]: https://docs.rs/lapin-futures/0.28.2/lapin_futures/
 [crate futures 0.3]: https://docs.rs/futures/0.3.1/
+[rust streams]: https://blog.yoshuawuyts.com/rust-streams/
 [tokio 0.2]: https://tokio.rs/blog/2019-11-tokio-0-2/
 [the tokio book]: https://github.com/tokio-rs/book/blob/master/SUMMARY.md
 [making the tokio 0.2 scheduler 10x faster]: https://tokio.rs/blog/2019-10-scheduler/
@@ -302,5 +306,4 @@ amq.gen-AiKQaNiz73V9du8EtgKfMg  0
 [Crate Metal I/O]: https://github.com/tokio-rs/mio
 [original futures design]: https://aturon.github.io/blog/2016/09/07/futures-design/
 [Aaron Turon]: https://aturon.github.io/blog/
-
-Happy Hacking!
+[Yoshua Wuyts]: https://blog.yoshuawuyts.com/

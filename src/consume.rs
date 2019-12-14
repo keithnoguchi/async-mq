@@ -5,8 +5,10 @@
 //! [Consumer]: struct.Consumer.html
 //! [ConsumerHandler]: trait.ConsumerHandler.html
 use async_trait::async_trait;
-use futures_util::stream::StreamExt;
+use futures::stream::{Stream, StreamExt};
 use lapin;
+use std::pin::Pin;
+use std::task::{Context, Poll};
 
 /// A [non-consuming] [Consumer] builder.
 ///
@@ -161,6 +163,26 @@ impl Consumer {
             .await
             .map_err(crate::Error::from)?;
         Ok(())
+    }
+}
+
+impl Stream for Consumer {
+    type Item = Result<Vec<u8>, crate::Error>;
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        let c = &mut self.consume;
+        let c = Pin::new(c);
+        match c.poll_next(cx) {
+            Poll::Ready(Some(Ok(msg))) => {
+                println!("{:?}", msg);
+                Poll::Ready(Some(Ok(msg.data)))
+            }
+            Poll::Ready(Some(Err(err))) => {
+                println!("{:?}", err);
+                Poll::Ready(Some(Err(err.into())))
+            }
+            Poll::Ready(None) => Poll::Ready(None),
+            Poll::Pending => Poll::Pending,
+        }
     }
 }
 
