@@ -14,8 +14,8 @@ Zero-cost abstraction [lapin] abstraction [AMQP] client crate
 ## Modules
 
 - [client]: `Client` and `Connection` structs
-- [consume]: `Consumer`, `ConsumerBuilder`, and `ConsumerExt` trait
-- [produce]: `Producer`, `ProducerBuilder`, and `ProducerExt` trait
+- [consume]: `Consumer` and `ConsumerBuilder` structs
+- [produce]: `Producer`, `ProducerBuilder`, and `ProducerHandler` trait
 
 [client]: src/client.rs
 [consume]: src/consume.rs
