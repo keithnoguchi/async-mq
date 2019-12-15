@@ -10,9 +10,9 @@ edition = "2018"
 [dependencies]
 async-trait = "^0.1"
 cookie-factory = "^0.3"
-flatbuffers = "^0.6"
 futures = "^0.3"
-futures-executor = "^0.3"
 futures-util = "^0.3"
 lapin = { version = "^0.28", features = ["futures"] }
+flatbuffers = "^0.6"
+futures-executor = "^0.3"
 tokio = "^0.2"
