@@ -30,7 +30,7 @@ fn main() -> thread::Result<()> {
     for _ in 0..CONSUMER_THREAD_NR {
         let builder = builder.clone();
         let consumer = thread::spawn(move || {
-            LocalEchoConsumer::new(builder, CONSUMER_INSTANCE_NR).run();
+            LocalPoolEchoConsumer::new(builder, CONSUMER_INSTANCE_NR).run();
         });
         threads.push(consumer);
     }
@@ -88,14 +88,14 @@ impl ASCIIGenerator {
     }
 }
 
-struct LocalEchoConsumer {
+struct LocalPoolEchoConsumer {
     builder: ConsumerBuilder,
     consumers: usize,
     pool: LocalPool,
     spawner: LocalSpawner,
 }
 
-impl LocalEchoConsumer {
+impl LocalPoolEchoConsumer {
     fn new(builder: ConsumerBuilder, consumers: usize) -> Self {
         let pool = LocalPool::new();
         let spawner = pool.spawner();
