@@ -25,7 +25,7 @@ pub struct ConsumerBuilder {
     tx_opts: lapin::options::BasicPublishOptions,
     rx_opts: lapin::options::BasicConsumeOptions,
     ack_opts: lapin::options::BasicAckOptions,
-    nack_opts: lapin::options::BasicNackOptions,
+    rej_opts: lapin::options::BasicRejectOptions,
     handler: Box<dyn crate::ConsumerHandler + Send>,
 }
 
@@ -41,7 +41,7 @@ impl ConsumerBuilder {
             tx_opts: lapin::options::BasicPublishOptions::default(),
             rx_opts: lapin::options::BasicConsumeOptions::default(),
             ack_opts: lapin::options::BasicAckOptions::default(),
-            nack_opts: lapin::options::BasicNackOptions::default(),
+            rej_opts: lapin::options::BasicRejectOptions::default(),
             handler: Box::new(EchoMessenger {}),
         }
     }
@@ -87,7 +87,7 @@ impl ConsumerBuilder {
             tx_props: self.tx_props.clone(),
             tx_opts: self.tx_opts.clone(),
             ack_opts: self.ack_opts.clone(),
-            nack_opts: self.nack_opts.clone(),
+            rej_opts: self.rej_opts.clone(),
             handler: self.handler.clone(),
         })
     }
@@ -102,11 +102,31 @@ pub struct Consumer {
     tx_props: lapin::BasicProperties,
     tx_opts: lapin::options::BasicPublishOptions,
     ack_opts: lapin::options::BasicAckOptions,
-    nack_opts: lapin::options::BasicNackOptions,
+    rej_opts: lapin::options::BasicRejectOptions,
     handler: Box<dyn crate::ConsumerHandler + Send>,
 }
 
 impl Consumer {
+    pub async fn response(&mut self, req: &crate::Message, resp: &[u8]) -> crate::Result<()> {
+        let delivery_tag = req.0.delivery_tag;
+        let reply_to = req.0.properties.reply_to();
+        if let Some(reply_to) = reply_to {
+            self.send(reply_to.as_str(), resp).await?;
+        }
+        self.ch
+            .basic_ack(delivery_tag, self.ack_opts.clone())
+            .await
+            .map_err(crate::Error::from)?;
+        Ok(())
+    }
+    pub async fn reject(&mut self, req: crate::Message) -> crate::Result<()> {
+        let delivery_tag = req.0.delivery_tag;
+        self.ch
+            .basic_reject(delivery_tag, self.rej_opts.clone())
+            .await
+            .map_err(crate::Error::from)?;
+        Ok(())
+    }
     /// Use the provided [ConsumerHandler] trait object.
     ///
     /// [ConsumerHandler]: trait.ConsumerHandler.html
@@ -145,7 +165,7 @@ impl Consumer {
             }
             Err(_err) => self
                 .ch
-                .basic_nack(delivery_tag, self.nack_opts.clone())
+                .basic_reject(delivery_tag, self.rej_opts.clone())
                 .await
                 .map_err(crate::Error::from)?,
         }
@@ -167,19 +187,13 @@ impl Consumer {
 }
 
 impl Stream for Consumer {
-    type Item = Result<Vec<u8>, crate::Error>;
+    type Item = Result<crate::Message, crate::Error>;
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let c = &mut self.consume;
         let c = Pin::new(c);
         match c.poll_next(cx) {
-            Poll::Ready(Some(Ok(msg))) => {
-                println!("{:?}", msg);
-                Poll::Ready(Some(Ok(msg.data)))
-            }
-            Poll::Ready(Some(Err(err))) => {
-                println!("{:?}", err);
-                Poll::Ready(Some(Err(err.into())))
-            }
+            Poll::Ready(Some(Ok(msg))) => Poll::Ready(Some(Ok(crate::Message(msg)))),
+            Poll::Ready(Some(Err(err))) => Poll::Ready(Some(Err(err.into()))),
             Poll::Ready(None) => Poll::Ready(None),
             Poll::Pending => Poll::Pending,
         }

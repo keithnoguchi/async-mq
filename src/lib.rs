@@ -6,11 +6,13 @@
 pub use client::{Client, Connection};
 pub use consume::{Consumer, ConsumerBuilder, ConsumerHandler};
 pub use error::Error;
+pub use message::Message;
 pub use produce::{Producer, ProducerBuilder, ProducerHandler};
 
 pub mod client;
 pub mod consume;
 pub mod error;
+pub mod message;
 pub mod produce;
 
 /// Crate local type aliases for less typing.  Those are meant for the
@@ -28,7 +30,7 @@ pub mod prelude {
     #[doc(no_inline)]
     pub use crate::{Client, Connection};
     #[doc(no_inline)]
-    pub use crate::{Consumer, ConsumerBuilder, ConsumerHandler};
+    pub use crate::{Consumer, ConsumerBuilder};
     #[doc(no_inline)]
     pub use crate::{Producer, ProducerBuilder, ProducerHandler};
 }

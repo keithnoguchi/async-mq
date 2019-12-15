@@ -2,7 +2,7 @@
 use async_trait::async_trait;
 use flatbuffers::FlatBufferBuilder;
 use futures_executor::{block_on, LocalPool, LocalSpawner};
-use futures_util::task::LocalSpawnExt;
+use futures_util::{stream::StreamExt, task::LocalSpawnExt};
 use rustmq::prelude::*;
 use std::{env, thread};
 
@@ -31,7 +31,7 @@ fn main() -> thread::Result<()> {
     for _ in 0..CONSUMER_THREAD_NR {
         let builder = builder.clone();
         let consumer = thread::spawn(move || {
-            LocalConsumerManager::new(builder, CONSUMER_INSTANCE_NR).run();
+            LocalEchoConsumer::new(builder, CONSUMER_INSTANCE_NR).run();
         });
         threads.push(consumer);
     }
@@ -121,14 +121,14 @@ impl ProducerHandler for DropPeeker {
     }
 }
 
-struct LocalConsumerManager {
+struct LocalEchoConsumer {
     builder: ConsumerBuilder,
     consumers: usize,
     pool: LocalPool,
     spawner: LocalSpawner,
 }
 
-impl LocalConsumerManager {
+impl LocalEchoConsumer {
     fn new(builder: ConsumerBuilder, consumers: usize) -> Self {
         let pool = LocalPool::new();
         let spawner = pool.spawner();
@@ -140,34 +140,25 @@ impl LocalConsumerManager {
         }
     }
     fn run(mut self) {
-        let mut builder = self.builder.clone();
-        builder.with_handler(Box::new(EchoMessenger {}));
-        let consumers = self.consumers;
+        let builder = self.builder.clone();
         let spawner = self.spawner.clone();
+        let consumers = self.consumers;
         self.spawner
             .spawn_local(async move {
                 for _ in 0..consumers {
-                    let mut consumer = builder.build().await.expect("consumer build failed");
+                    let mut c = builder.build().await.expect("consumer build failed");
                     let _task = spawner.spawn_local(async move {
-                        consumer.run().await.expect("consumer died");
+                        while let Some(Ok(req)) = c.next().await {
+                            // Echo back the message.
+                            if let Err(err) = c.response(&req, req.data()).await {
+                                eprintln!("{}", err);
+                            }
+                        }
                     });
                 }
             })
             .expect("consumer manager died");
         self.pool.run();
-    }
-}
-
-#[derive(Clone)]
-struct EchoMessenger;
-
-#[async_trait]
-impl ConsumerHandler for EchoMessenger {
-    async fn recv(&mut self, msg: Vec<u8>) -> Result<Vec<u8>, rustmq::Error> {
-        Ok(msg)
-    }
-    fn boxed_clone(&self) -> Box<dyn ConsumerHandler + Send> {
-        Box::new((*self).clone())
     }
 }
 
