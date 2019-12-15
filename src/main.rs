@@ -115,10 +115,15 @@ impl LocalPoolEchoConsumer {
                 for _ in 0..consumers {
                     let mut c = builder.build().await.expect("consumer build failed");
                     let _task = spawner.spawn_local(async move {
-                        while let Some(Ok(req)) = c.next().await {
-                            // Echo back the message.
-                            if let Err(err) = c.response(&req, req.data()).await {
-                                eprintln!("{}", err);
+                        while let Some(msg) = c.next().await {
+                            match msg {
+                                Err(err) => eprintln!("{}", err),
+                                Ok(req) => {
+                                    if let Err(err) = c.response(&req, req.data()).await {
+                                        // Echo back the message.
+                                        eprintln!("{}", err);
+                                    }
+                                }
                             }
                         }
                     });
