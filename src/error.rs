@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: APACHE-2.0 AND MIT
-//! Error enum type
+//! `Error` enum type
 use cookie_factory;
 use lapin;
 

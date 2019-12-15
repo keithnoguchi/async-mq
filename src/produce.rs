@@ -1,9 +1,5 @@
 // SPDX-License-Identifier: APACHE-2.0 AND MIT
-//! [ProducerBuilder], [Producer] structs, and [ProducerHandler] traits
-//!
-//! [ProducerBuilder]: struct.ProducerBuilder.html
-//! [Producer]: struct.Producer.html
-//! [ProducerHandler]: trait.ProducerHandler.html
+//! `ProducerBuilder` and `Producer` structs
 use futures_util::stream::StreamExt;
 use lapin;
 
@@ -24,7 +20,7 @@ pub struct ProducerBuilder {
     ack_opts: lapin::options::BasicAckOptions,
     rej_opts: lapin::options::BasicRejectOptions,
     nack_opts: lapin::options::BasicNackOptions,
-    peeker: Box<dyn crate::MessagePeeker + Send>,
+    peeker: Box<dyn crate::MessagePeek + Send>,
 }
 
 impl ProducerBuilder {
@@ -55,7 +51,7 @@ impl ProducerBuilder {
     /// Use the provided [ProducerHandler] trait object.
     ///
     /// [ProducerHandler]: trait.ProducerHandler.html
-    pub fn with_peeker(&mut self, peeker: Box<dyn crate::MessagePeeker + Send>) -> &mut Self {
+    pub fn with_peeker(&mut self, peeker: Box<dyn crate::MessagePeek + Send>) -> &mut Self {
         self.peeker = peeker;
         self
     }
@@ -119,14 +115,14 @@ pub struct Producer {
     ack_opts: lapin::options::BasicAckOptions,
     rej_opts: lapin::options::BasicRejectOptions,
     nack_opts: lapin::options::BasicNackOptions,
-    peeker: Box<dyn crate::MessagePeeker + Send>,
+    peeker: Box<dyn crate::MessagePeek + Send>,
 }
 
 impl Producer {
-    /// Use the provided [MessagePeeker] trait object.
+    /// Use the provided [MessagePeek] trait object.
     ///
-    /// [MessagePeeker]: ../message/trait.MessagePeeker.html
-    pub fn with_peeker(&mut self, peeker: Box<dyn crate::MessagePeeker + Send>) -> &mut Self {
+    /// [MessagePeek]: ../message/trait.MessagePeek.html
+    pub fn with_peeker(&mut self, peeker: Box<dyn crate::MessagePeek + Send>) -> &mut Self {
         self.peeker = peeker;
         self
     }

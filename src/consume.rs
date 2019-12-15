@@ -1,8 +1,5 @@
 // SPDX-License-Identifier: APACHE-2.0 AND MIT
-//! [ConsumerBuilder] and [Consumer] structs
-//!
-//! [ConsumerBuilder]: struct.ConsumerBuilder.html
-//! [Consumer]: struct.Consumer.html
+//! `ConsumerBuilder` and `Consumer` structs
 use futures::stream::{Stream, StreamExt};
 use lapin;
 use std::pin::Pin;
@@ -24,7 +21,7 @@ pub struct ConsumerBuilder {
     rx_opts: lapin::options::BasicConsumeOptions,
     ack_opts: lapin::options::BasicAckOptions,
     rej_opts: lapin::options::BasicRejectOptions,
-    processor: Box<dyn crate::MessageProcessor + Send>,
+    processor: Box<dyn crate::MessageProcess + Send>,
 }
 
 impl ConsumerBuilder {
@@ -53,12 +50,12 @@ impl ConsumerBuilder {
         self.queue = queue;
         self
     }
-    /// Use the provided [MessageProcessor] trait object.
+    /// Use the provided [MessageProcess] trait object.
     ///
-    /// [MessageProcessor]: trait.MessageProcessor.html
+    /// [MessageProcess]: ../message/trait.MessageProcess.html
     pub fn with_processor(
         &mut self,
-        processor: Box<dyn crate::MessageProcessor + Send>,
+        processor: Box<dyn crate::MessageProcess + Send>,
     ) -> &mut Self {
         self.processor = processor;
         self
@@ -104,7 +101,7 @@ pub struct Consumer {
     tx_opts: lapin::options::BasicPublishOptions,
     ack_opts: lapin::options::BasicAckOptions,
     rej_opts: lapin::options::BasicRejectOptions,
-    processor: Box<dyn crate::MessageProcessor + Send>,
+    processor: Box<dyn crate::MessageProcess + Send>,
 }
 
 impl Consumer {

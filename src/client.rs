@@ -1,8 +1,5 @@
 // SPDX-License-Identifier: APACHE-2.0 AND MIT
-//! [Client] and [Connection] structs
-//!
-//! [Client]: struct.Client.html
-//! [Connection]: struct.Connection.html
+//! `Client` and `Connection` structs
 use std::default::Default;
 
 /// A [non-consuming] [Connection] builder.

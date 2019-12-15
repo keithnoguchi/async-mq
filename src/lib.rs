@@ -6,7 +6,7 @@
 pub use client::{Client, Connection};
 pub use consume::{Consumer, ConsumerBuilder};
 pub use error::Error;
-pub use message::{Message, MessageError, MessagePeeker, MessageProcessor};
+pub use message::{Message, MessageError, MessagePeek, MessageProcess};
 pub use produce::{Producer, ProducerBuilder};
 
 pub mod client;
