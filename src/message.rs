@@ -23,6 +23,8 @@ pub enum MessageError {
     Drop,
     /// Reject a message.
     Reject,
+    /// Nack a message.
+    Nack,
 }
 
 impl Message {

@@ -22,6 +22,7 @@ pub struct ProducerBuilder {
     tx_opts: lapin::options::BasicPublishOptions,
     rx_opts: lapin::options::BasicConsumeOptions,
     ack_opts: lapin::options::BasicAckOptions,
+    rej_opts: lapin::options::BasicRejectOptions,
     nack_opts: lapin::options::BasicNackOptions,
     peeker: Box<dyn crate::MessagePeeker + Send>,
 }
@@ -38,6 +39,7 @@ impl ProducerBuilder {
             tx_opts: lapin::options::BasicPublishOptions::default(),
             rx_opts: lapin::options::BasicConsumeOptions::default(),
             ack_opts: lapin::options::BasicAckOptions::default(),
+            rej_opts: lapin::options::BasicRejectOptions::default(),
             nack_opts: lapin::options::BasicNackOptions::default(),
             peeker: Box::new(crate::message::NoopPeeker {}),
         }
@@ -95,6 +97,7 @@ impl ProducerBuilder {
             rx_props: self.tx_props.clone().with_reply_to(q.name().clone()),
             tx_opts: self.tx_opts.clone(),
             ack_opts: self.ack_opts.clone(),
+            rej_opts: self.rej_opts.clone(),
             nack_opts: self.nack_opts.clone(),
             peeker: self.peeker.clone(),
         })
@@ -114,6 +117,7 @@ pub struct Producer {
     rx_props: lapin::BasicProperties,
     tx_opts: lapin::options::BasicPublishOptions,
     ack_opts: lapin::options::BasicAckOptions,
+    rej_opts: lapin::options::BasicRejectOptions,
     nack_opts: lapin::options::BasicNackOptions,
     peeker: Box<dyn crate::MessagePeeker + Send>,
 }
@@ -160,14 +164,22 @@ impl Producer {
     }
     async fn recv(&mut self, msg: &crate::Message) -> crate::Result<Vec<u8>> {
         match self.peeker.peek(msg).await {
-            Ok(_) => {
+            Ok(()) => {
                 self.rx
                     .basic_ack(msg.0.delivery_tag, self.ack_opts.clone())
                     .await
                     .map_err(crate::Error::from)?;
                 Ok(msg.data().to_vec())
             }
-            Err(_err) => {
+            Err(crate::MessageError::Drop) => Ok(vec![]),
+            Err(crate::MessageError::Reject) => {
+                self.rx
+                    .basic_reject(msg.0.delivery_tag, self.rej_opts.clone())
+                    .await
+                    .map_err(crate::Error::from)?;
+                Ok(vec![])
+            }
+            Err(crate::MessageError::Nack) => {
                 self.rx
                     .basic_nack(msg.0.delivery_tag, self.nack_opts.clone())
                     .await
