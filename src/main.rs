@@ -8,13 +8,13 @@ use std::{env, thread};
 fn main() -> thread::Result<()> {
     let mut threads = Vec::with_capacity(PRODUCER_THREAD_NR + CONSUMER_THREAD_NR);
     let client = Client::new();
-    let queue_name = "request";
+    let request_queue = "request";
     let uri = parse();
 
     // A single connection for the multiple producers.
     let conn = block_on(client.connect(&uri)).expect("fail to connect");
     let mut builder = conn.producer_builder();
-    builder.queue(String::from(queue_name));
+    builder.queue(String::from(request_queue));
     for _ in 0..PRODUCER_THREAD_NR {
         let builder = builder.clone();
         let producer = thread::spawn(move || {
@@ -26,7 +26,7 @@ fn main() -> thread::Result<()> {
     // A single connection for multiple consumers.
     let conn = block_on(client.connect(&uri)).expect("fail to connect");
     let mut builder = conn.consumer_builder();
-    builder.queue(String::from(queue_name));
+    builder.queue(String::from(request_queue));
     for _ in 0..CONSUMER_THREAD_NR {
         let builder = builder.clone();
         let consumer = thread::spawn(move || {
