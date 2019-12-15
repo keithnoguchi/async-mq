@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: APACHE-2.0 AND MIT
-//! [ConsumerBuilder], [Consumer] structs, and [ConsumerHandler] trait
+//! [ConsumerBuilder] and [Consumer] structs
 //!
 //! [ConsumerBuilder]: struct.ConsumerBuilder.html
 //! [Consumer]: struct.Consumer.html
-//! [ConsumerHandler]: trait.ConsumerHandler.html
-use async_trait::async_trait;
 use futures::stream::{Stream, StreamExt};
 use lapin;
 use std::pin::Pin;
@@ -26,7 +24,7 @@ pub struct ConsumerBuilder {
     rx_opts: lapin::options::BasicConsumeOptions,
     ack_opts: lapin::options::BasicAckOptions,
     rej_opts: lapin::options::BasicRejectOptions,
-    handler: Box<dyn crate::ConsumerHandler + Send>,
+    peeker: Box<dyn crate::message::MessagePeeker + Send>,
 }
 
 impl ConsumerBuilder {
@@ -42,7 +40,7 @@ impl ConsumerBuilder {
             rx_opts: lapin::options::BasicConsumeOptions::default(),
             ack_opts: lapin::options::BasicAckOptions::default(),
             rej_opts: lapin::options::BasicRejectOptions::default(),
-            handler: Box::new(EchoMessenger {}),
+            peeker: Box::new(crate::message::EchoPeeker {}),
         }
     }
     /// Override the default exchange name.
@@ -55,11 +53,14 @@ impl ConsumerBuilder {
         self.queue = queue;
         self
     }
-    /// Use the provided [ConsumerHandler] trait object.
+    /// Use the provided [MessagePeeker] trait object.
     ///
-    /// [ConsumerHandler]: trait.ConsumerHandler.html
-    pub fn with_handler(&mut self, handler: Box<dyn crate::ConsumerHandler + Send>) -> &mut Self {
-        self.handler = handler;
+    /// [MessagePeeker]: trait.MessagePeeker.html
+    pub fn with_peeker(
+        &mut self,
+        peeker: Box<dyn crate::message::MessagePeeker + Send>,
+    ) -> &mut Self {
+        self.peeker = peeker;
         self
     }
     pub async fn build(&self) -> crate::Result<Consumer> {
@@ -88,7 +89,7 @@ impl ConsumerBuilder {
             tx_opts: self.tx_opts.clone(),
             ack_opts: self.ack_opts.clone(),
             rej_opts: self.rej_opts.clone(),
-            handler: self.handler.clone(),
+            peeker: self.peeker.clone(),
         })
     }
 }
@@ -103,47 +104,40 @@ pub struct Consumer {
     tx_opts: lapin::options::BasicPublishOptions,
     ack_opts: lapin::options::BasicAckOptions,
     rej_opts: lapin::options::BasicRejectOptions,
-    handler: Box<dyn crate::ConsumerHandler + Send>,
+    peeker: Box<dyn crate::message::MessagePeeker + Send>,
 }
 
 impl Consumer {
+    pub async fn run(&mut self) -> crate::Result<()> {
+        while let Some(msg) = self.consume.next().await {
+            match msg {
+                Ok(msg) => {
+                    let req = &crate::Message(msg);
+                    match self.peeker.peek(req).await {
+                        Ok(resp) => self.response(req, &resp).await?,
+                        Err(_err) => self.reject(req).await?,
+                    }
+                }
+                Err(err) => return Err(crate::Error::from(err)),
+            }
+        }
+        Ok(())
+    }
     pub async fn response(&mut self, req: &crate::Message, resp: &[u8]) -> crate::Result<()> {
-        let delivery_tag = req.0.delivery_tag;
-        let reply_to = req.0.properties.reply_to();
-        if let Some(reply_to) = reply_to {
+        if let Some(reply_to) = req.0.properties.reply_to() {
             self.send(reply_to.as_str(), resp).await?;
         }
         self.ch
-            .basic_ack(delivery_tag, self.ack_opts.clone())
+            .basic_ack(req.0.delivery_tag, self.ack_opts.clone())
             .await
             .map_err(crate::Error::from)?;
         Ok(())
     }
     pub async fn reject(&mut self, req: &crate::Message) -> crate::Result<()> {
-        let delivery_tag = req.0.delivery_tag;
         self.ch
-            .basic_reject(delivery_tag, self.rej_opts.clone())
+            .basic_reject(req.0.delivery_tag, self.rej_opts.clone())
             .await
             .map_err(crate::Error::from)?;
-        Ok(())
-    }
-    /// Use the provided [ConsumerHandler] trait object.
-    ///
-    /// [ConsumerHandler]: trait.ConsumerHandler.html
-    pub fn with_handler(&mut self, handler: Box<dyn crate::ConsumerHandler + Send>) -> &mut Self {
-        self.handler = handler;
-        self
-    }
-    pub async fn run(&mut self) -> crate::Result<()> {
-        while let Some(msg) = self.consume.next().await {
-            match msg {
-                Ok(msg) => match self.handler.recv(&msg.data).await {
-                    Ok(resp) => self.response(&crate::Message(msg), &resp).await?,
-                    Err(_err) => self.reject(&crate::Message(msg)).await?,
-                },
-                Err(err) => return Err(crate::Error::from(err)),
-            }
-        }
         Ok(())
     }
     async fn send(&mut self, queue: &str, msg: &[u8]) -> crate::Result<()> {
@@ -172,41 +166,5 @@ impl Stream for Consumer {
             Poll::Ready(None) => Poll::Ready(None),
             Poll::Pending => Poll::Pending,
         }
-    }
-}
-
-/// A trait to extend the [Consumer] capability.
-///
-/// [Consumer]: struct.Consumer.html
-#[async_trait]
-pub trait ConsumerHandler {
-    /// Async method to transfer the message to [ConsumerHandler] implementor.
-    ///
-    /// [ConsumerHandler]: trait.ConsumerHandler.html
-    async fn recv(&mut self, msg: &[u8]) -> crate::Result<Vec<u8>>;
-    fn boxed_clone(&self) -> Box<dyn ConsumerHandler + Send>;
-}
-
-// https://users.rust-lang.org/t/solved-is-it-possible-to-clone-a-boxed-trait-object/1714/6
-impl Clone for Box<dyn ConsumerHandler + Send> {
-    fn clone(&self) -> Box<dyn ConsumerHandler + Send> {
-        self.boxed_clone()
-    }
-}
-
-/// A default [ConsumerHandler] implementor that echoes back the received message.
-///
-/// [ConsumerHandler]: trait.ConsumerHandler.html
-#[derive(Clone)]
-struct EchoMessenger;
-
-#[async_trait]
-impl ConsumerHandler for EchoMessenger {
-    /// Echoe back the received message.
-    async fn recv(&mut self, msg: &[u8]) -> crate::Result<Vec<u8>> {
-        Ok(msg.to_vec())
-    }
-    fn boxed_clone(&self) -> Box<dyn ConsumerHandler + Send> {
-        Box::new((*self).clone())
     }
 }

@@ -4,9 +4,9 @@
 //! [lapin]: https://crates.io/crates/lapin
 //! [amqp]: https://www.amqp.org
 pub use client::{Client, Connection};
-pub use consume::{Consumer, ConsumerBuilder, ConsumerHandler};
+pub use consume::{Consumer, ConsumerBuilder};
 pub use error::Error;
-pub use message::Message;
+pub use message::{Message, MessagePeeker};
 pub use produce::{Producer, ProducerBuilder, ProducerHandler};
 
 pub mod client;
