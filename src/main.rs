@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: APACHE-2.0 AND MIT
-use async_trait::async_trait;
 use flatbuffers::FlatBufferBuilder;
 use futures_executor::{block_on, LocalPool, LocalSpawner};
 use futures_util::{stream::StreamExt, task::LocalSpawnExt};
@@ -9,7 +8,7 @@ use std::{env, thread};
 fn main() -> thread::Result<()> {
     let mut threads = Vec::with_capacity(PRODUCER_THREAD_NR + CONSUMER_THREAD_NR);
     let client = Client::new();
-    let queue_name = "hello";
+    let queue_name = "request";
     let uri = parse();
 
     // A single connection for the multiple producers.
@@ -52,18 +51,17 @@ impl ASCIIGenerator {
         Self { builder }
     }
     fn run(&mut self) -> Result<(), Error> {
-        let mut builder = self.builder.clone();
-        builder.with_handler(Box::new(NoopPeeker {}));
+        let builder = self.builder.clone();
         let mut pool = LocalPool::new();
         pool.run_until(async move {
-            let mut producer = builder.build().await?;
+            let mut p = builder.build().await?;
             let mut builder = FlatBufferBuilder::new();
             loop {
                 // Generate ASCII character FlatBuffer messages
                 // and print the received message to stderr.
-                for data in { b'!'..b'~' } {
+                for data in { b'!'..=b'~' } {
                     let req = self.make_buf(&mut builder, vec![data]);
-                    let resp = producer.rpc(req).await?;
+                    let resp = p.rpc(req).await?;
                     self.print_buf(resp);
                 }
             }
@@ -87,37 +85,6 @@ impl ASCIIGenerator {
         if let Some(data) = msg.msg() {
             eprint!("{}", data);
         }
-    }
-}
-
-#[allow(dead_code)]
-#[derive(Clone)]
-struct NoopPeeker;
-
-#[async_trait]
-impl ProducerHandler for NoopPeeker {
-    async fn peek(&mut self, msg: Vec<u8>) -> Result<Vec<u8>, Error> {
-        // Nothing to do now.
-        Ok(msg)
-    }
-    fn boxed_clone(&self) -> Box<dyn ProducerHandler + Send> {
-        Box::new((*self).clone())
-    }
-}
-
-#[allow(dead_code)]
-#[derive(Clone)]
-struct DropPeeker;
-
-#[async_trait]
-impl ProducerHandler for DropPeeker {
-    /// Just comsume the received message so that no message print out
-    /// to the console.  This is good for the benchmarking.
-    async fn peek(&mut self, _msg: Vec<u8>) -> Result<Vec<u8>, Error> {
-        Ok(vec![])
-    }
-    fn boxed_clone(&self) -> Box<dyn ProducerHandler + Send> {
-        Box::new((*self).clone())
     }
 }
 

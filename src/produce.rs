@@ -4,7 +4,6 @@
 //! [ProducerBuilder]: struct.ProducerBuilder.html
 //! [Producer]: struct.Producer.html
 //! [ProducerHandler]: trait.ProducerHandler.html
-use async_trait::async_trait;
 use futures_util::stream::StreamExt;
 use lapin;
 
@@ -24,7 +23,7 @@ pub struct ProducerBuilder {
     rx_opts: lapin::options::BasicConsumeOptions,
     ack_opts: lapin::options::BasicAckOptions,
     nack_opts: lapin::options::BasicNackOptions,
-    handler: Box<dyn crate::ProducerHandler + Send>,
+    peeker: Box<dyn crate::MessagePeeker + Send>,
 }
 
 impl ProducerBuilder {
@@ -40,7 +39,7 @@ impl ProducerBuilder {
             rx_opts: lapin::options::BasicConsumeOptions::default(),
             ack_opts: lapin::options::BasicAckOptions::default(),
             nack_opts: lapin::options::BasicNackOptions::default(),
-            handler: Box::new(crate::produce::NoopPeeker {}),
+            peeker: Box::new(crate::message::NoopPeeker {}),
         }
     }
     pub fn exchange(&mut self, exchange: String) -> &mut Self {
@@ -54,8 +53,8 @@ impl ProducerBuilder {
     /// Use the provided [ProducerHandler] trait object.
     ///
     /// [ProducerHandler]: trait.ProducerHandler.html
-    pub fn with_handler(&mut self, handler: Box<dyn crate::ProducerHandler + Send>) -> &mut Self {
-        self.handler = handler;
+    pub fn with_peeker(&mut self, peeker: Box<dyn crate::MessagePeeker + Send>) -> &mut Self {
+        self.peeker = peeker;
         self
     }
     pub async fn build(&self) -> crate::Result<Producer> {
@@ -97,7 +96,7 @@ impl ProducerBuilder {
             tx_opts: self.tx_opts.clone(),
             ack_opts: self.ack_opts.clone(),
             nack_opts: self.nack_opts.clone(),
-            handler: self.handler.clone(),
+            peeker: self.peeker.clone(),
         })
     }
 }
@@ -116,15 +115,15 @@ pub struct Producer {
     tx_opts: lapin::options::BasicPublishOptions,
     ack_opts: lapin::options::BasicAckOptions,
     nack_opts: lapin::options::BasicNackOptions,
-    handler: Box<dyn crate::ProducerHandler + Send>,
+    peeker: Box<dyn crate::MessagePeeker + Send>,
 }
 
 impl Producer {
-    /// Use the provided [ProducerHandler] trait object.
+    /// Use the provided [MessagePeeker] trait object.
     ///
-    /// [ProducerHandler]: trait.ProducerHandler.html
-    pub fn with_handler(&mut self, handler: Box<dyn crate::ProducerHandler + Send>) -> &mut Self {
-        self.handler = handler;
+    /// [MessagePeeker]: ../message/trait.MessagePeeker.html
+    pub fn with_peeker(&mut self, peeker: Box<dyn crate::MessagePeeker + Send>) -> &mut Self {
+        self.peeker = peeker;
         self
     }
     pub async fn publish(&mut self, msg: Vec<u8>) -> crate::Result<()> {
@@ -153,62 +152,28 @@ impl Producer {
             .map_err(crate::Error::from)?;
         if let Some(msg) = self.consume.next().await {
             match msg {
-                Ok(msg) => return self.recv(msg).await,
+                Ok(msg) => return self.recv(&crate::Message(msg)).await,
                 Err(err) => return Err(crate::Error::from(err)),
             }
         }
         Ok(vec![])
     }
-    async fn recv(&mut self, msg: lapin::message::Delivery) -> crate::Result<Vec<u8>> {
-        let delivery_tag = msg.delivery_tag;
-        match self.handler.peek(msg.data).await {
-            Ok(msg) => {
+    async fn recv(&mut self, msg: &crate::Message) -> crate::Result<Vec<u8>> {
+        match self.peeker.peek(msg).await {
+            Ok(_) => {
                 self.rx
-                    .basic_ack(delivery_tag, self.ack_opts.clone())
+                    .basic_ack(msg.0.delivery_tag, self.ack_opts.clone())
                     .await
                     .map_err(crate::Error::from)?;
-                Ok(msg)
+                Ok(msg.data().to_vec())
             }
             Err(_err) => {
                 self.rx
-                    .basic_nack(delivery_tag, self.nack_opts.clone())
+                    .basic_nack(msg.0.delivery_tag, self.nack_opts.clone())
                     .await
                     .map_err(crate::Error::from)?;
                 Ok(vec![])
             }
         }
-    }
-}
-
-/// A trait to extend the [Producer] capability.
-///
-/// [Producer]: struct.Producer.html
-#[async_trait]
-pub trait ProducerHandler {
-    async fn peek(&mut self, msg: Vec<u8>) -> crate::Result<Vec<u8>>;
-    fn boxed_clone(&self) -> Box<dyn ProducerHandler + Send>;
-}
-
-// https://users.rust-lang.org/t/solved-is-it-possible-to-clone-a-boxed-trait-object/1714/6
-impl Clone for Box<dyn ProducerHandler + Send> {
-    fn clone(&self) -> Box<dyn ProducerHandler + Send> {
-        self.boxed_clone()
-    }
-}
-
-/// A default [ProducerHandler] implementor that just nothing to do
-/// with the received message.
-///
-/// [ProducerHandler]: trait.ProducerHandler.html
-#[derive(Clone)]
-pub struct NoopPeeker;
-
-#[async_trait]
-impl ProducerHandler for NoopPeeker {
-    async fn peek(&mut self, msg: Vec<u8>) -> crate::Result<Vec<u8>> {
-        Ok(msg)
-    }
-    fn boxed_clone(&self) -> Box<dyn ProducerHandler + Send> {
-        Box::new((*self).clone())
     }
 }

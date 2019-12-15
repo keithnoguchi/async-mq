@@ -24,7 +24,7 @@ pub struct ConsumerBuilder {
     rx_opts: lapin::options::BasicConsumeOptions,
     ack_opts: lapin::options::BasicAckOptions,
     rej_opts: lapin::options::BasicRejectOptions,
-    peeker: Box<dyn crate::message::MessagePeeker + Send>,
+    processor: Box<dyn crate::MessageProcessor + Send>,
 }
 
 impl ConsumerBuilder {
@@ -40,7 +40,7 @@ impl ConsumerBuilder {
             rx_opts: lapin::options::BasicConsumeOptions::default(),
             ack_opts: lapin::options::BasicAckOptions::default(),
             rej_opts: lapin::options::BasicRejectOptions::default(),
-            peeker: Box::new(crate::message::EchoPeeker {}),
+            processor: Box::new(crate::message::EchoProcessor {}),
         }
     }
     /// Override the default exchange name.
@@ -53,14 +53,14 @@ impl ConsumerBuilder {
         self.queue = queue;
         self
     }
-    /// Use the provided [MessagePeeker] trait object.
+    /// Use the provided [MessageProcessor] trait object.
     ///
-    /// [MessagePeeker]: trait.MessagePeeker.html
-    pub fn with_peeker(
+    /// [MessageProcessor]: trait.MessageProcessor.html
+    pub fn with_processor(
         &mut self,
-        peeker: Box<dyn crate::message::MessagePeeker + Send>,
+        processor: Box<dyn crate::MessageProcessor + Send>,
     ) -> &mut Self {
-        self.peeker = peeker;
+        self.processor = processor;
         self
     }
     pub async fn build(&self) -> crate::Result<Consumer> {
@@ -89,7 +89,7 @@ impl ConsumerBuilder {
             tx_opts: self.tx_opts.clone(),
             ack_opts: self.ack_opts.clone(),
             rej_opts: self.rej_opts.clone(),
-            peeker: self.peeker.clone(),
+            processor: self.processor.clone(),
         })
     }
 }
@@ -104,7 +104,7 @@ pub struct Consumer {
     tx_opts: lapin::options::BasicPublishOptions,
     ack_opts: lapin::options::BasicAckOptions,
     rej_opts: lapin::options::BasicRejectOptions,
-    peeker: Box<dyn crate::message::MessagePeeker + Send>,
+    processor: Box<dyn crate::MessageProcessor + Send>,
 }
 
 impl Consumer {
@@ -113,7 +113,7 @@ impl Consumer {
             match msg {
                 Ok(msg) => {
                     let req = &crate::Message(msg);
-                    match self.peeker.peek(req).await {
+                    match self.processor.process(req).await {
                         Ok(resp) => self.response(req, &resp).await?,
                         Err(_err) => self.reject(req).await?,
                     }

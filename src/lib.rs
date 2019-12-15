@@ -6,8 +6,8 @@
 pub use client::{Client, Connection};
 pub use consume::{Consumer, ConsumerBuilder};
 pub use error::Error;
-pub use message::{Message, MessagePeeker};
-pub use produce::{Producer, ProducerBuilder, ProducerHandler};
+pub use message::{Message, MessageError, MessagePeeker, MessageProcessor};
+pub use produce::{Producer, ProducerBuilder};
 
 pub mod client;
 pub mod consume;
@@ -32,5 +32,5 @@ pub mod prelude {
     #[doc(no_inline)]
     pub use crate::{Consumer, ConsumerBuilder};
     #[doc(no_inline)]
-    pub use crate::{Producer, ProducerBuilder, ProducerHandler};
+    pub use crate::{Producer, ProducerBuilder};
 }

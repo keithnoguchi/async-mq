@@ -40,7 +40,7 @@ and consumers:
 fn main() -> thread::Result<()> {
     let mut threads = Vec::with_capacity(PRODUCER_THREAD_NR + CONSUMER_THREAD_NR);
     let client = Client::new();
-    let queue_name = "hello";
+    let queue_name = "request";
     let uri = parse();
 
     // A single connection for the multiple producers.
@@ -83,46 +83,44 @@ struct ASCIIGenerator {
 }
 
 impl ASCIIGenerator {
-    fn new(builder: rustmq::ProducerBuilder) -> Self {
+    fn new(builder: ProducerBuilder) -> Self {
         Self { builder }
     }
-    fn run(&mut self) -> Result<()> {
+    fn run(&mut self) -> Result<(), Error> {
         let builder = self.builder.clone();
         let mut pool = LocalPool::new();
         pool.run_until(async move {
-            let mut buf_builder = FlatBufferBuilder::new();
             let mut p = builder.build().await?;
-            p.with_ext(Box::new(FlatBufferPrinter {}));
+            let mut builder = FlatBufferBuilder::new();
             loop {
-                for data in { b'!'..b'~' } {
-                    let data = buf_builder.create_string(&String::from_utf8(vec![data]).unwrap());
-                    let mut mb = crate::msg::MessageBuilder::new(&mut buf_builder);
-                    mb.add_msg(data);
-                    let msg = mb.finish();
-                    buf_builder.finish(msg, None);
-                    let msg = buf_builder.finished_data();
-                    p.rpc(msg.to_vec()).await?;
-                    buf_builder.reset();
+                // Generate ASCII character FlatBuffer messages
+                // and print the received message to stderr.
+                for data in { b'!'..=b'~' } {
+                    let req = self.make_buf(&mut builder, vec![data]);
+                    let resp = p.rpc(req).await?;
+                    self.print_buf(resp);
                 }
             }
         })
     }
-}
-
-#[derive(Clone)]
-pub struct FlatBufferPrinter;
-
-#[async_trait]
-impl rustmq::ProducerExt for FlatBufferPrinter {
-    async fn recv(&mut self, msg: Vec<u8>) -> lapin::Result<()> {
-        let msg = crate::msg::get_root_as_message(&msg);
-        if let Some(msg) = msg.msg() {
-            eprint!("{}", msg);
-        }
-        Ok(())
+    fn make_buf(&self, builder: &mut FlatBufferBuilder, data: Vec<u8>) -> Vec<u8> {
+        let data = builder.create_string(&String::from_utf8(data).unwrap());
+        let mut mb = crate::msg::MessageBuilder::new(builder);
+        mb.add_msg(data);
+        let msg = mb.finish();
+        builder.finish(msg, None);
+        let req = builder.finished_data().to_vec();
+        builder.reset();
+        req
     }
-    fn box_clone(&self) -> Box<dyn rustmq::ProducerExt + Send> {
-        Box::new((*self).clone())
+    fn print_buf(&self, resp: Vec<u8>) {
+        if resp.is_empty() {
+            return;
+        }
+        let msg = crate::msg::get_root_as_message(&resp);
+        if let Some(data) = msg.msg() {
+            eprint!("{}", data);
+        }
     }
 }
 ```
