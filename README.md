@@ -38,44 +38,38 @@ and consumers:
 
 ```sh
 fn main() -> thread::Result<()> {
+    let mut threads = Vec::with_capacity(PRODUCER_THREAD_NR + CONSUMER_THREAD_NR);
     let client = Client::new();
     let queue_name = "hello";
     let uri = parse();
 
     // A single connection for the multiple producers.
     let conn = block_on(client.connect(&uri)).expect("fail to connect");
-    let mut builder = ProducerBuilder::new(conn);
+    let mut builder = conn.producer_builder();
     builder.queue(String::from(queue_name));
-    let mut producers = Vec::with_capacity(PRODUCER_THREAD_NR);
-    for _ in 0..producers.capacity() {
+    for _ in 0..PRODUCER_THREAD_NR {
         let builder = builder.clone();
         let producer = thread::spawn(move || {
             ASCIIGenerator::new(builder).run().expect("generator died");
         });
-        producers.push(producer);
+        threads.push(producer);
     }
 
     // A single connection for multiple consumers.
     let conn = block_on(client.connect(&uri)).expect("fail to connect");
-    let mut builder = ConsumerBuilder::new(conn);
+    let mut builder = conn.consumer_builder();
     builder.queue(String::from(queue_name));
-    let mut consumers = Vec::with_capacity(CONSUMER_THREAD_NR);
-    for _ in 0..consumers.capacity() {
+    for _ in 0..CONSUMER_THREAD_NR {
         let builder = builder.clone();
         let consumer = thread::spawn(move || {
-            LocalConsumerManager::new(builder, CONSUMER_INSTANCE_NR).run();
+            LocalEchoConsumer::new(builder, CONSUMER_INSTANCE_NR).run();
         });
-        consumers.push(consumer);
+        threads.push(consumer);
     }
 
     // Cleanup all instances.
-    while !producers.is_empty() {
-        let producer = producers.pop().unwrap();
-        producer.join()?;
-    }
-    while !consumers.is_empty() {
-        let consumer = consumers.pop().unwrap();
-        consumer.join()?;
+    for t in threads {
+        t.join()?;
     }
     Ok(())
 }
@@ -136,15 +130,15 @@ impl rustmq::ProducerExt for FlatBufferPrinter {
 And the consumer side:
 
 ```sh
-struct LocalConsumerManager {
+struct LocalEchoConsumer {
     builder: ConsumerBuilder,
     consumers: usize,
     pool: LocalPool,
     spawner: LocalSpawner,
 }
 
-impl LocalConsumerManager {
-    fn new(builder: rustmq::ConsumerBuilder, consumers: usize) -> Self {
+impl LocalEchoConsumer {
+    fn new(builder: ConsumerBuilder, consumers: usize) -> Self {
         let pool = LocalPool::new();
         let spawner = pool.spawner();
         Self {
@@ -155,34 +149,25 @@ impl LocalConsumerManager {
         }
     }
     fn run(mut self) {
-        let mut builder = self.builder.clone();
-        let consumers = self.consumers;
+        let builder = self.builder.clone();
         let spawner = self.spawner.clone();
+        let consumers = self.consumers;
         self.spawner
             .spawn_local(async move {
-                builder.with_ext(Box::new(EchoMessage {}));
                 for _ in 0..consumers {
-                    let mut consumer = builder.build().await.expect("consumer build failed");
+                    let mut c = builder.build().await.expect("consumer build failed");
                     let _task = spawner.spawn_local(async move {
-                        consumer.run().await.expect("consumer died");
+                        while let Some(Ok(req)) = c.next().await {
+                            // Echo back the message.
+                            if let Err(err) = c.response(&req, req.data()).await {
+                                eprintln!("{}", err);
+                            }
+                        }
                     });
                 }
             })
             .expect("consumer manager died");
         self.pool.run();
-    }
-}
-
-#[derive(Clone)]
-struct EchoMessage;
-
-#[async_trait]
-impl rustmq::ConsumerExt for EchoMessage {
-    async fn recv(&mut self, msg: Vec<u8>) -> lapin::Result<Vec<u8>> {
-        Ok(msg)
-    }
-    fn box_clone(&self) -> Box<dyn rustmq::ConsumerExt + Send> {
-        Box::new((*self).clone())
     }
 }
 ```

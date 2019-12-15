@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use flatbuffers::FlatBufferBuilder;
 use futures_executor::{block_on, LocalPool, LocalSpawner};
 use futures_util::{stream::StreamExt, task::LocalSpawnExt};
-use rustmq::prelude::*;
+use rustmq::{prelude::*, Error};
 use std::{env, thread};
 
 fn main() -> thread::Result<()> {
@@ -51,7 +51,7 @@ impl ASCIIGenerator {
     fn new(builder: ProducerBuilder) -> Self {
         Self { builder }
     }
-    fn run(&mut self) -> Result<(), rustmq::Error> {
+    fn run(&mut self) -> Result<(), Error> {
         let mut builder = self.builder.clone();
         builder.with_handler(Box::new(NoopPeeker {}));
         let mut pool = LocalPool::new();
@@ -96,7 +96,7 @@ struct NoopPeeker;
 
 #[async_trait]
 impl ProducerHandler for NoopPeeker {
-    async fn peek(&mut self, msg: Vec<u8>) -> Result<Vec<u8>, rustmq::Error> {
+    async fn peek(&mut self, msg: Vec<u8>) -> Result<Vec<u8>, Error> {
         // Nothing to do now.
         Ok(msg)
     }
@@ -113,7 +113,7 @@ struct DropPeeker;
 impl ProducerHandler for DropPeeker {
     /// Just comsume the received message so that no message print out
     /// to the console.  This is good for the benchmarking.
-    async fn peek(&mut self, _msg: Vec<u8>) -> Result<Vec<u8>, rustmq::Error> {
+    async fn peek(&mut self, _msg: Vec<u8>) -> Result<Vec<u8>, Error> {
         Ok(vec![])
     }
     fn boxed_clone(&self) -> Box<dyn ProducerHandler + Send> {

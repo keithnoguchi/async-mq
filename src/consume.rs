@@ -137,7 +137,7 @@ impl Consumer {
     pub async fn run(&mut self) -> crate::Result<()> {
         while let Some(msg) = self.consume.next().await {
             match msg {
-                Ok(msg) => self.recv(msg).await?,
+                Ok(msg) => self.recv(&msg).await?,
                 Err(err) => return Err(crate::Error::from(err)),
             }
         }
@@ -150,10 +150,10 @@ impl Consumer {
     /// the message.
     ///
     /// [ConsumerHandler]: trait.ConsumerHandler.html
-    async fn recv(&mut self, msg: lapin::message::Delivery) -> crate::Result<()> {
+    async fn recv(&mut self, msg: &lapin::message::Delivery) -> crate::Result<()> {
         let delivery_tag = msg.delivery_tag;
         let reply_to = msg.properties.reply_to();
-        match self.handler.recv(msg.data).await {
+        match self.handler.recv(&msg.data).await {
             Ok(msg) => {
                 if let Some(reply_to) = reply_to {
                     self.send(reply_to.as_str(), &msg).await?;
@@ -208,7 +208,7 @@ pub trait ConsumerHandler {
     /// Async method to transfer the message to [ConsumerHandler] implementor.
     ///
     /// [ConsumerHandler]: trait.ConsumerHandler.html
-    async fn recv(&mut self, msg: Vec<u8>) -> crate::Result<Vec<u8>>;
+    async fn recv(&mut self, msg: &[u8]) -> crate::Result<Vec<u8>>;
     fn boxed_clone(&self) -> Box<dyn ConsumerHandler + Send>;
 }
 
@@ -223,13 +223,13 @@ impl Clone for Box<dyn ConsumerHandler + Send> {
 ///
 /// [ConsumerHandler]: trait.ConsumerHandler.html
 #[derive(Clone)]
-pub struct EchoMessenger;
+struct EchoMessenger;
 
 #[async_trait]
 impl ConsumerHandler for EchoMessenger {
     /// Echoe back the received message.
-    async fn recv(&mut self, msg: Vec<u8>) -> crate::Result<Vec<u8>> {
-        Ok(msg)
+    async fn recv(&mut self, msg: &[u8]) -> crate::Result<Vec<u8>> {
+        Ok(msg.to_vec())
     }
     fn boxed_clone(&self) -> Box<dyn ConsumerHandler + Send> {
         Box::new((*self).clone())
