@@ -40,29 +40,57 @@ and consumers:
 fn main() -> thread::Result<()> {
     let mut threads = Vec::with_capacity(PRODUCER_THREAD_NR + CONSUMER_THREAD_NR);
     let client = Client::new();
-    let queue_name = "request";
+    let request_queue = "request";
     let uri = parse();
 
-    // A single connection for the multiple producers.
+    // A single connection for multiple local pool producers.
     let conn = block_on(client.connect(&uri)).expect("fail to connect");
     let mut builder = conn.producer_builder();
-    builder.queue(String::from(queue_name));
+    builder.queue(String::from(request_queue));
     for _ in 0..PRODUCER_THREAD_NR {
         let builder = builder.clone();
         let producer = thread::spawn(move || {
-            ASCIIGenerator::new(builder).run().expect("generator died");
+            LocalPool::new().run_until(async {
+                match builder.build().await {
+                    Err(e) => eprintln!("{}", e),
+                    Ok(p) => {
+                        let mut p = ASCIIGenerator(p);
+                        if let Err(err) = p.run().await {
+                            eprintln!("{}", err);
+                        }
+                    }
+                }
+            });
         });
         threads.push(producer);
     }
 
-    // A single connection for multiple consumers.
+    // A single connection for multiple local pool consumers.
     let conn = block_on(client.connect(&uri)).expect("fail to connect");
     let mut builder = conn.consumer_builder();
-    builder.queue(String::from(queue_name));
+    builder.queue(String::from(request_queue));
     for _ in 0..CONSUMER_THREAD_NR {
         let builder = builder.clone();
         let consumer = thread::spawn(move || {
-            LocalEchoConsumer::new(builder, CONSUMER_INSTANCE_NR).run();
+            let mut pool = LocalPool::new();
+            let spawner = pool.spawner();
+            for _ in 0..CONSUMER_INSTANCE_NR {
+                let builder = builder.clone();
+                spawner
+                    .spawn_local(async move {
+                        match builder.build().await {
+                            Err(err) => eprintln!("{}", err),
+                            Ok(c) => {
+                                let mut c = EchoConsumer(c);
+                                if let Err(err) = c.run().await {
+                                    eprintln!("{}", err);
+                                }
+                            }
+                        }
+                    })
+                    .expect("consumer died");
+            }
+            pool.run();
         });
         threads.push(consumer);
     }
@@ -78,32 +106,22 @@ fn main() -> thread::Result<()> {
 Here are the producer side of the structures:
 
 ```sh
-struct ASCIIGenerator {
-    builder: ProducerBuilder,
-}
+struct ASCIIGenerator(Producer);
 
 impl ASCIIGenerator {
-    fn new(builder: ProducerBuilder) -> Self {
-        Self { builder }
-    }
-    fn run(&mut self) -> Result<(), Error> {
-        let builder = self.builder.clone();
-        let mut pool = LocalPool::new();
-        pool.run_until(async move {
-            let mut p = builder.build().await?;
-            let mut builder = FlatBufferBuilder::new();
-            loop {
-                // Generate ASCII character FlatBuffer messages
-                // and print the received message to stderr.
-                for data in { b'!'..=b'~' } {
-                    let req = self.make_buf(&mut builder, vec![data]);
-                    let resp = p.rpc(req).await?;
-                    self.print_buf(resp);
-                }
+    async fn run(&mut self) -> Result<(), Error> {
+        let mut builder = FlatBufferBuilder::new();
+        loop {
+            // Generate ASCII character FlatBuffer messages
+            // and print the received message to stderr.
+            for data in { b'!'..=b'~' } {
+                let req = Self::make_buf(&mut builder, vec![data]);
+                let resp = self.0.rpc(req).await?;
+                Self::print_buf(resp);
             }
-        })
+        }
     }
-    fn make_buf(&self, builder: &mut FlatBufferBuilder, data: Vec<u8>) -> Vec<u8> {
+    fn make_buf(builder: &mut FlatBufferBuilder, data: Vec<u8>) -> Vec<u8> {
         let data = builder.create_string(&String::from_utf8(data).unwrap());
         let mut mb = crate::msg::MessageBuilder::new(builder);
         mb.add_msg(data);
@@ -113,7 +131,7 @@ impl ASCIIGenerator {
         builder.reset();
         req
     }
-    fn print_buf(&self, resp: Vec<u8>) {
+    fn print_buf(resp: Vec<u8>) {
         if resp.is_empty() {
             return;
         }
@@ -128,44 +146,18 @@ impl ASCIIGenerator {
 And the consumer side:
 
 ```sh
-struct LocalEchoConsumer {
-    builder: ConsumerBuilder,
-    consumers: usize,
-    pool: LocalPool,
-    spawner: LocalSpawner,
-}
+struct EchoConsumer(Consumer);
 
-impl LocalEchoConsumer {
-    fn new(builder: ConsumerBuilder, consumers: usize) -> Self {
-        let pool = LocalPool::new();
-        let spawner = pool.spawner();
-        Self {
-            builder,
-            consumers,
-            pool,
-            spawner,
+impl EchoConsumer {
+    async fn run(&mut self) -> Result<(), Error> {
+        while let Some(msg) = self.0.next().await {
+            match msg {
+                // Echo back the message.
+                Ok(req) => self.0.response(&req, req.data()).await?,
+                Err(err) => return Err(err),
+            }
         }
-    }
-    fn run(mut self) {
-        let builder = self.builder.clone();
-        let spawner = self.spawner.clone();
-        let consumers = self.consumers;
-        self.spawner
-            .spawn_local(async move {
-                for _ in 0..consumers {
-                    let mut c = builder.build().await.expect("consumer build failed");
-                    let _task = spawner.spawn_local(async move {
-                        while let Some(Ok(req)) = c.next().await {
-                            // Echo back the message.
-                            if let Err(err) = c.response(&req, req.data()).await {
-                                eprintln!("{}", err);
-                            }
-                        }
-                    });
-                }
-            })
-            .expect("consumer manager died");
-        self.pool.run();
+        Ok(())
     }
 }
 ```
