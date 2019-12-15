@@ -119,7 +119,7 @@ impl Consumer {
             .map_err(crate::Error::from)?;
         Ok(())
     }
-    pub async fn reject(&mut self, req: crate::Message) -> crate::Result<()> {
+    pub async fn reject(&mut self, req: &crate::Message) -> crate::Result<()> {
         let delivery_tag = req.0.delivery_tag;
         self.ch
             .basic_reject(delivery_tag, self.rej_opts.clone())
@@ -137,37 +137,12 @@ impl Consumer {
     pub async fn run(&mut self) -> crate::Result<()> {
         while let Some(msg) = self.consume.next().await {
             match msg {
-                Ok(msg) => self.recv(&msg).await?,
+                Ok(msg) => match self.handler.recv(&msg.data).await {
+                    Ok(resp) => self.response(&crate::Message(msg), &resp).await?,
+                    Err(_err) => self.reject(&crate::Message(msg)).await?,
+                },
                 Err(err) => return Err(crate::Error::from(err)),
             }
-        }
-        Ok(())
-    }
-    /// Transfer the received message to [ConsumerHandler] and acknowledge
-    /// it to the broker, or nack in case [ConsumerHandler] implementor returns
-    /// error.  In case of the message contains `reply_to` field, it will
-    /// send back to the response queue specified in `reply_to` field in
-    /// the message.
-    ///
-    /// [ConsumerHandler]: trait.ConsumerHandler.html
-    async fn recv(&mut self, msg: &lapin::message::Delivery) -> crate::Result<()> {
-        let delivery_tag = msg.delivery_tag;
-        let reply_to = msg.properties.reply_to();
-        match self.handler.recv(&msg.data).await {
-            Ok(msg) => {
-                if let Some(reply_to) = reply_to {
-                    self.send(reply_to.as_str(), &msg).await?;
-                }
-                self.ch
-                    .basic_ack(delivery_tag, self.ack_opts.clone())
-                    .await
-                    .map_err(crate::Error::from)?
-            }
-            Err(_err) => self
-                .ch
-                .basic_reject(delivery_tag, self.rej_opts.clone())
-                .await
-                .map_err(crate::Error::from)?,
         }
         Ok(())
     }
