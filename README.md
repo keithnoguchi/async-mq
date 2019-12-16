@@ -239,6 +239,10 @@ amq.gen-AiKQaNiz73V9du8EtgKfMg  0
   - [Lapin futures 0.3 example]: [Crate futures 0.3] example.
 - [Crate futures 0.3]: Abstructions for Asynchronous Programming
   - [Rust streams] by [Yoshua Wuyts]
+- [crate async-std 1.0]
+  - [The Async-std Book]
+  - [Announcing Async-std 1.0]
+  - [Stop Worrying about Blocking]
 - [crate tokio 0.2]
   - [A Tour of Tokio]
   - [The Tokio Book]
@@ -261,6 +265,10 @@ Happy Hacking!
 [crate futures 0.3]: https://docs.rs/futures/0.3.1/
 [rust streams]: https://blog.yoshuawuyts.com/rust-streams/
 [Yoshua Wuyts]: https://blog.yoshuawuyts.com/
+[crate async-std 1.0]: https://crates.io/crates/async-std
+[the async-std book]: https://book.async.rs/
+[announcing async-std 1.0]: https://async.rs/blog/announcing-async-std-1-0/
+[stop worrying about blocking]: https://async.rs/blog/stop-worrying-about-blocking-the-new-async-std-runtime/
 [crate tokio 0.2]: https://tokio.rs/blog/2019-11-tokio-0-2/
 [a tour of tokio]: https://docs.rs/tokio/latest/tokio/#a-tour-of-tokio
 [the tokio book]: https://github.com/tokio-rs/book/blob/master/SUMMARY.md
