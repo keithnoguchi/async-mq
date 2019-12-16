@@ -16,3 +16,4 @@ lapin = { version = "^0.28", features = ["futures"] }
 futures-executor = { version = "^0.3", features = ["thread-pool"] }
 flatbuffers = "^0.6"
 clap = "^2.33"
+tokio = "^0.2"
