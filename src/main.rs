@@ -31,7 +31,7 @@ fn thread_tokio(cfg: crate::cfg::Config) -> Result<(), Box<dyn std::error::Error
         // One connection for multiple producers.
         let conn = client.connect(&cfg.uri).await?;
         let mut builder = conn.producer_builder();
-        builder.with_queue_name(String::from(&cfg.queue));
+        builder.with_queue_name(&cfg.queue);
         for _ in 0..cfg.producers {
             let builder = builder.clone();
             tokio::spawn(async move {
@@ -49,7 +49,7 @@ fn thread_tokio(cfg: crate::cfg::Config) -> Result<(), Box<dyn std::error::Error
         // One connection for multiple consumers.
         let conn = client.connect(&cfg.uri).await?;
         let mut builder = conn.consumer_builder();
-        builder.with_queue_name(String::from(&cfg.queue));
+        builder.with_queue_name(&cfg.queue);
         for _ in 0..cfg.consumers {
             let builder = builder.clone();
             tokio::spawn(async move {
@@ -86,7 +86,7 @@ fn thread_pool(cfg: crate::cfg::Config) -> Result<(), Box<dyn std::error::Error>
 
     let enter = enter()?;
     let mut builder = producer_conn.producer_builder();
-    builder.with_queue_name(String::from(&cfg.queue));
+    builder.with_queue_name(&cfg.queue);
     for _ in 0..cfg.producers {
         let builder = builder.clone();
         pool.spawn(async move {
@@ -102,7 +102,7 @@ fn thread_pool(cfg: crate::cfg::Config) -> Result<(), Box<dyn std::error::Error>
         })?;
     }
     let mut builder = consumer_conn.consumer_builder();
-    builder.with_queue_name(String::from(&cfg.queue));
+    builder.with_queue_name(&cfg.queue);
     for _ in 0..cfg.consumers {
         let builder = builder.clone();
         pool.spawn(async move {
@@ -136,7 +136,7 @@ fn local_pool(cfg: crate::cfg::Config) -> Result<(), Box<dyn std::error::Error>>
     // A single connection for multiple local pool producers.
     let conn = block_on(client.connect(&cfg.uri))?;
     let mut builder = conn.producer_builder();
-    builder.with_queue_name(String::from(&cfg.queue));
+    builder.with_queue_name(&cfg.queue);
     for _ in 0..cfg.producers {
         let builder = builder.clone();
         let producer = thread::spawn(move || {
@@ -160,7 +160,7 @@ fn local_pool(cfg: crate::cfg::Config) -> Result<(), Box<dyn std::error::Error>>
     let consumers = cfg.consumers / consumers_per_thread;
     let conn = block_on(client.connect(&cfg.uri))?;
     let mut builder = conn.consumer_builder();
-    builder.with_queue_name(String::from(&cfg.queue));
+    builder.with_queue_name(&cfg.queue);
     for _ in 0..consumers {
         let builder = builder.clone();
         let consumer = thread::spawn(move || {
