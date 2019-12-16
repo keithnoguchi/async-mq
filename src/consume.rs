@@ -21,7 +21,7 @@ pub struct ConsumerBuilder {
     rx_opts: lapin::options::BasicConsumeOptions,
     ack_opts: lapin::options::BasicAckOptions,
     rej_opts: lapin::options::BasicRejectOptions,
-    processor: Box<dyn crate::MessageProcess + Send>,
+    processor: Box<dyn crate::MessageProcess + Send + Sync>,
 }
 
 impl ConsumerBuilder {
@@ -55,7 +55,7 @@ impl ConsumerBuilder {
     /// [MessageProcess]: ../message/trait.MessageProcess.html
     pub fn with_processor(
         &mut self,
-        processor: Box<dyn crate::MessageProcess + Send>,
+        processor: Box<dyn crate::MessageProcess + Send + Sync>,
     ) -> &mut Self {
         self.processor = processor;
         self
@@ -101,7 +101,7 @@ pub struct Consumer {
     tx_opts: lapin::options::BasicPublishOptions,
     ack_opts: lapin::options::BasicAckOptions,
     rej_opts: lapin::options::BasicRejectOptions,
-    processor: Box<dyn crate::MessageProcess + Send>,
+    processor: Box<dyn crate::MessageProcess + Send + Sync>,
 }
 
 impl Consumer {

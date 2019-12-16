@@ -20,7 +20,7 @@ pub struct ProducerBuilder {
     ack_opts: lapin::options::BasicAckOptions,
     rej_opts: lapin::options::BasicRejectOptions,
     nack_opts: lapin::options::BasicNackOptions,
-    peeker: Box<dyn crate::MessagePeek + Send>,
+    peeker: Box<dyn crate::MessagePeek + Send + Sync>,
 }
 
 impl ProducerBuilder {
@@ -51,7 +51,7 @@ impl ProducerBuilder {
     /// Use the provided [ProducerHandler] trait object.
     ///
     /// [ProducerHandler]: trait.ProducerHandler.html
-    pub fn with_peeker(&mut self, peeker: Box<dyn crate::MessagePeek + Send>) -> &mut Self {
+    pub fn with_peeker(&mut self, peeker: Box<dyn crate::MessagePeek + Send + Sync>) -> &mut Self {
         self.peeker = peeker;
         self
     }
@@ -122,7 +122,7 @@ impl Producer {
     /// Use the provided [MessagePeek] trait object.
     ///
     /// [MessagePeek]: ../message/trait.MessagePeek.html
-    pub fn with_peeker(&mut self, peeker: Box<dyn crate::MessagePeek + Send>) -> &mut Self {
+    pub fn with_peeker(&mut self, peeker: Box<dyn crate::MessagePeek + Send + Sync>) -> &mut Self {
         self.peeker = peeker;
         self
     }

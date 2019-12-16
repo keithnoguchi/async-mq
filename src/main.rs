@@ -1,18 +1,85 @@
 // SPDX-License-Identifier: APACHE-2.0 AND MIT
 use flatbuffers::FlatBufferBuilder;
-use futures_executor::{block_on, LocalPool};
-use futures_util::{stream::StreamExt, task::LocalSpawnExt};
+use futures::executor::{block_on, LocalPool};
+use futures_executor::{enter, ThreadPool};
+use futures_util::{stream::StreamExt, task::LocalSpawnExt, task::SpawnExt};
 use rustmq::{prelude::*, Error};
 use std::{env, thread};
 
-fn main() -> thread::Result<()> {
+enum PoolType {
+    #[allow(dead_code)]
+    ThreadPool,
+    #[allow(dead_code)]
+    LocalPool,
+}
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let pool_type = PoolType::ThreadPool;
+    match pool_type {
+        PoolType::ThreadPool => thread_pool(),
+        PoolType::LocalPool => local_pool(),
+    }
+}
+
+fn thread_pool() -> Result<(), Box<dyn std::error::Error>> {
+    let pool = ThreadPool::new()?;
+    let client = Client::new();
+    let request_queue = "request";
+    let uri = parse();
+
+    // One connection for multiple thread pool producers and consumers each.
+    let producer_conn = block_on(client.connect(&uri))?;
+    let consumer_conn = block_on(client.connect(&uri))?;
+
+    let enter = enter()?;
+    let mut builder = producer_conn.producer_builder();
+    builder.queue(String::from(request_queue));
+    for _ in 0..TOTAL_PRODUCER_NR {
+        let builder = builder.clone();
+        pool.spawn(async move {
+            match builder.build().await {
+                Err(e) => eprintln!("{}", e),
+                Ok(p) => {
+                    let mut p = ASCIIGenerator(p);
+                    if let Err(err) = p.run().await {
+                        eprintln!("{}", err);
+                    }
+                }
+            }
+        })?;
+    }
+    let mut builder = consumer_conn.consumer_builder();
+    builder.queue(String::from(request_queue));
+    for _ in 0..TOTAL_CONSUMER_NR {
+        let builder = builder.clone();
+        pool.spawn(async move {
+            match builder.build().await {
+                Err(err) => eprintln!("{}", err),
+                Ok(c) => {
+                    let mut c = EchoConsumer(c);
+                    if let Err(err) = c.run().await {
+                        eprintln!("{}", err);
+                    }
+                }
+            }
+        })?;
+    }
+    drop(enter);
+
+    // idle loop.
+    loop {
+        thread::sleep(std::time::Duration::from_secs(1));
+    }
+}
+
+fn local_pool() -> Result<(), Box<dyn std::error::Error>> {
     let mut threads = Vec::with_capacity(PRODUCER_THREAD_NR + CONSUMER_THREAD_NR);
     let client = Client::new();
     let request_queue = "request";
     let uri = parse();
 
     // A single connection for multiple local pool producers.
-    let conn = block_on(client.connect(&uri)).expect("fail to connect");
+    let conn = block_on(client.connect(&uri))?;
     let mut builder = conn.producer_builder();
     builder.queue(String::from(request_queue));
     for _ in 0..PRODUCER_THREAD_NR {
@@ -34,7 +101,7 @@ fn main() -> thread::Result<()> {
     }
 
     // A single connection for multiple local pool consumers.
-    let conn = block_on(client.connect(&uri)).expect("fail to connect");
+    let conn = block_on(client.connect(&uri))?;
     let mut builder = conn.consumer_builder();
     builder.queue(String::from(request_queue));
     for _ in 0..CONSUMER_THREAD_NR {
@@ -44,19 +111,19 @@ fn main() -> thread::Result<()> {
             let spawner = pool.spawner();
             for _ in 0..CONSUMER_INSTANCE_NR {
                 let builder = builder.clone();
-                spawner
-                    .spawn_local(async move {
-                        match builder.build().await {
-                            Err(err) => eprintln!("{}", err),
-                            Ok(c) => {
-                                let mut c = EchoConsumer(c);
-                                if let Err(err) = c.run().await {
-                                    eprintln!("{}", err);
-                                }
+                if let Err(err) = spawner.spawn_local(async move {
+                    match builder.build().await {
+                        Err(err) => eprintln!("{}", err),
+                        Ok(c) => {
+                            let mut c = EchoConsumer(c);
+                            if let Err(err) = c.run().await {
+                                eprintln!("{}", err);
                             }
                         }
-                    })
-                    .expect("consumer died");
+                    }
+                }) {
+                    eprintln!("{:?}", err);
+                }
             }
             pool.run();
         });
@@ -65,7 +132,9 @@ fn main() -> thread::Result<()> {
 
     // Cleanup all instances.
     for t in threads {
-        t.join()?;
+        if let Err(err) = t.join() {
+            eprintln!("{:?}", err);
+        }
     }
     Ok(())
 }

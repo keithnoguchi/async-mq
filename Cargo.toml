@@ -13,6 +13,5 @@ cookie-factory = "^0.3"
 futures = "^0.3"
 futures-util = "^0.3"
 lapin = { version = "^0.28", features = ["futures"] }
+futures-executor = { version = "^0.3", features = ["thread-pool"] }
 flatbuffers = "^0.6"
-futures-executor = "^0.3"
-tokio = "^0.2"

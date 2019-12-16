@@ -1,6 +1,6 @@
 # rustmq
 
-Zero-cost abstraction [lapin] abstraction [AMQP] client crate
+Zero-cost abstraction of [lapin] [AMQP] client crate
 
 [lapin]: https://crates.io/crates/lapin
 [amqp]: https://www.amqp.org
@@ -15,95 +15,81 @@ Zero-cost abstraction [lapin] abstraction [AMQP] client crate
 
 - [client]: `Client` and `Connection` structs
 - [consume]: `Consumer` and `ConsumerBuilder` structs
-- [produce]: `Producer`, `ProducerBuilder`, and `ProducerHandler` trait
+- [produce]: `Producer` and `ProducerBuilder` structs
+- [message]: `Message` struct, `MessagePeek` and `MessageProcess` async traits
 
 [client]: src/client.rs
 [consume]: src/consume.rs
 [produce]: src/produce.rs
-[flatbuffers]: https://google.github.io/flatbuffers/
+[message]: src/message.rs
 
 ## Example
 
 Currently, [main.rs] demonstrates the RabbitMQ RPC pattern
-through the Rust 1.39 [async-await] feature with [lapin].
-It creates 32 producer threads and 8 consumer threads, with each
-thread runs 8 consumer [async-await] instances.  It also uses
-[FlatBuffers] for the message encoding.
+through the Rust 1.39 [async-await] feature.  It uses
+[FlatBuffers] for the message encoding/decoding.
 
 [main.rs]: src/main.rs
 [async-await]: https://blog.rust-lang.org/2019/11/07/Async-await-stable.html
+[flatbuffers]: https://google.github.io/flatbuffers/
 
-Here is the main function which creates threads both the producers
-and consumers:
+Here is the main function which executes both producers and consumers
+on the same thread pool:
 
 ```sh
-fn main() -> thread::Result<()> {
-    let mut threads = Vec::with_capacity(PRODUCER_THREAD_NR + CONSUMER_THREAD_NR);
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let pool = ThreadPool::new()?;
     let client = Client::new();
     let request_queue = "request";
     let uri = parse();
 
-    // A single connection for multiple local pool producers.
-    let conn = block_on(client.connect(&uri)).expect("fail to connect");
-    let mut builder = conn.producer_builder();
+    // One connection for multiple thread pool producers and consumers each.
+    let producer_conn = block_on(client.connect(&uri))?;
+    let consumer_conn = block_on(client.connect(&uri))?;
+
+    let enter = enter()?;
+    let mut builder = producer_conn.producer_builder();
     builder.queue(String::from(request_queue));
-    for _ in 0..PRODUCER_THREAD_NR {
+    for _ in 0..TOTAL_PRODUCER_NR {
         let builder = builder.clone();
-        let producer = thread::spawn(move || {
-            LocalPool::new().run_until(async {
-                match builder.build().await {
-                    Err(e) => eprintln!("{}", e),
-                    Ok(p) => {
-                        let mut p = ASCIIGenerator(p);
-                        if let Err(err) = p.run().await {
-                            eprintln!("{}", err);
-                        }
+        pool.spawn(async move {
+            match builder.build().await {
+                Err(e) => eprintln!("{}", e),
+                Ok(p) => {
+                    let mut p = ASCIIGenerator(p);
+                    if let Err(err) = p.run().await {
+                        eprintln!("{}", err);
                     }
                 }
-            });
-        });
-        threads.push(producer);
-    }
-
-    // A single connection for multiple local pool consumers.
-    let conn = block_on(client.connect(&uri)).expect("fail to connect");
-    let mut builder = conn.consumer_builder();
-    builder.queue(String::from(request_queue));
-    for _ in 0..CONSUMER_THREAD_NR {
-        let builder = builder.clone();
-        let consumer = thread::spawn(move || {
-            let mut pool = LocalPool::new();
-            let spawner = pool.spawner();
-            for _ in 0..CONSUMER_INSTANCE_NR {
-                let builder = builder.clone();
-                spawner
-                    .spawn_local(async move {
-                        match builder.build().await {
-                            Err(err) => eprintln!("{}", err),
-                            Ok(c) => {
-                                let mut c = EchoConsumer(c);
-                                if let Err(err) = c.run().await {
-                                    eprintln!("{}", err);
-                                }
-                            }
-                        }
-                    })
-                    .expect("consumer died");
             }
-            pool.run();
-        });
-        threads.push(consumer);
+        })?;
     }
+    let mut builder = consumer_conn.consumer_builder();
+    builder.queue(String::from(request_queue));
+    for _ in 0..TOTAL_CONSUMER_NR {
+        let builder = builder.clone();
+        pool.spawn(async move {
+            match builder.build().await {
+                Err(err) => eprintln!("{}", err),
+                Ok(c) => {
+                    let mut c = EchoConsumer(c);
+                    if let Err(err) = c.run().await {
+                        eprintln!("{}", err);
+                    }
+                }
+            }
+        })?;
+    }
+    drop(enter);
 
-    // Cleanup all instances.
-    for t in threads {
-        t.join()?;
+    // idle loop.
+    loop {
+        thread::sleep(std::time::Duration::from_secs(1));
     }
-    Ok(())
 }
 ```
 
-Here are the producer side of the structures:
+Here is the sample `ASCIIGererator` producer:
 
 ```sh
 struct ASCIIGenerator(Producer);
@@ -143,7 +129,7 @@ impl ASCIIGenerator {
 }
 ```
 
-And the consumer side:
+And the sample `EchoConsumer` consumer:
 
 ```sh
 struct EchoConsumer(Consumer);

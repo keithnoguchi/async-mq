@@ -37,12 +37,12 @@ impl Message {
 pub trait MessagePeek {
     /// Async method to peek a message.
     async fn peek(&mut self, msg: &Message) -> Result<(), MessageError>;
-    fn boxed_clone(&self) -> Box<dyn MessagePeek + Send>;
+    fn boxed_clone(&self) -> Box<dyn MessagePeek + Send + Sync>;
 }
 
 // https://users.rust-lang.org/t/solved-is-it-possible-to-clone-a-boxed-trait-object/1714/6
-impl Clone for Box<dyn MessagePeek + Send> {
-    fn clone(&self) -> Box<dyn MessagePeek + Send> {
+impl Clone for Box<dyn MessagePeek + Send + Sync> {
+    fn clone(&self) -> Box<dyn MessagePeek + Send + Sync> {
         self.boxed_clone()
     }
 }
@@ -55,12 +55,12 @@ impl Clone for Box<dyn MessagePeek + Send> {
 pub trait MessageProcess {
     /// Async method to process a message.
     async fn process(&mut self, msg: &Message) -> Result<Vec<u8>, MessageError>;
-    fn boxed_clone(&self) -> Box<dyn MessageProcess + Send>;
+    fn boxed_clone(&self) -> Box<dyn MessageProcess + Send + Sync>;
 }
 
 // https://users.rust-lang.org/t/solved-is-it-possible-to-clone-a-boxed-trait-object/1714/6
-impl Clone for Box<dyn MessageProcess + Send> {
-    fn clone(&self) -> Box<dyn MessageProcess + Send> {
+impl Clone for Box<dyn MessageProcess + Send + Sync> {
+    fn clone(&self) -> Box<dyn MessageProcess + Send + Sync> {
         self.boxed_clone()
     }
 }
@@ -77,7 +77,7 @@ impl MessagePeek for NoopPeeker {
     async fn peek(&mut self, _msg: &Message) -> Result<(), MessageError> {
         Ok(())
     }
-    fn boxed_clone(&self) -> Box<dyn MessagePeek + Send> {
+    fn boxed_clone(&self) -> Box<dyn MessagePeek + Send + Sync> {
         Box::new((*self).clone())
     }
 }
@@ -95,7 +95,7 @@ impl MessagePeek for RejectPeeker {
     async fn peek(&mut self, _msg: &Message) -> Result<(), MessageError> {
         Err(MessageError::Reject)
     }
-    fn boxed_clone(&self) -> Box<dyn MessagePeek + Send> {
+    fn boxed_clone(&self) -> Box<dyn MessagePeek + Send + Sync> {
         Box::new((*self).clone())
     }
 }
@@ -112,7 +112,7 @@ impl MessageProcess for EchoProcessor {
     async fn process(&mut self, msg: &Message) -> Result<Vec<u8>, MessageError> {
         Ok(msg.data().to_vec())
     }
-    fn boxed_clone(&self) -> Box<dyn MessageProcess + Send> {
+    fn boxed_clone(&self) -> Box<dyn MessageProcess + Send + Sync> {
         Box::new((*self).clone())
     }
 }
