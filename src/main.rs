@@ -1,40 +1,40 @@
 // SPDX-License-Identifier: APACHE-2.0 AND MIT
+use clap::arg_enum;
 use flatbuffers::FlatBufferBuilder;
 use futures::executor::{block_on, LocalPool};
 use futures_executor::{enter, ThreadPool};
 use futures_util::{stream::StreamExt, task::LocalSpawnExt, task::SpawnExt};
 use rustmq::{prelude::*, Error};
-use std::{env, thread};
+use std::thread;
 
-enum PoolType {
-    #[allow(dead_code)]
-    ThreadPool,
-    #[allow(dead_code)]
-    LocalPool,
-}
-
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let pool_type = PoolType::ThreadPool;
-    match pool_type {
-        PoolType::ThreadPool => thread_pool(),
-        PoolType::LocalPool => local_pool(),
+arg_enum! {
+    enum Runtime {
+        ThreadPool,
+        LocalPool,
     }
 }
 
-fn thread_pool() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let cfg = Config::parse();
+    match cfg.runtime {
+        Runtime::ThreadPool => thread_pool(cfg),
+        Runtime::LocalPool => local_pool(cfg),
+    }
+}
+
+fn thread_pool(cfg: Config) -> Result<(), Box<dyn std::error::Error>> {
     let pool = ThreadPool::new()?;
     let client = Client::new();
     let request_queue = "request";
-    let uri = parse();
 
     // One connection for multiple thread pool producers and consumers each.
-    let producer_conn = block_on(client.connect(&uri))?;
-    let consumer_conn = block_on(client.connect(&uri))?;
+    let producer_conn = block_on(client.connect(&cfg.uri))?;
+    let consumer_conn = block_on(client.connect(&cfg.uri))?;
 
     let enter = enter()?;
     let mut builder = producer_conn.producer_builder();
     builder.queue(String::from(request_queue));
-    for _ in 0..TOTAL_PRODUCER_NR {
+    for _ in 0..cfg.producers {
         let builder = builder.clone();
         pool.spawn(async move {
             match builder.build().await {
@@ -50,7 +50,7 @@ fn thread_pool() -> Result<(), Box<dyn std::error::Error>> {
     }
     let mut builder = consumer_conn.consumer_builder();
     builder.queue(String::from(request_queue));
-    for _ in 0..TOTAL_CONSUMER_NR {
+    for _ in 0..cfg.consumers {
         let builder = builder.clone();
         pool.spawn(async move {
             match builder.build().await {
@@ -72,17 +72,16 @@ fn thread_pool() -> Result<(), Box<dyn std::error::Error>> {
     }
 }
 
-fn local_pool() -> Result<(), Box<dyn std::error::Error>> {
-    let mut threads = Vec::with_capacity(PRODUCER_THREAD_NR + CONSUMER_THREAD_NR);
+fn local_pool(cfg: Config) -> Result<(), Box<dyn std::error::Error>> {
+    let mut threads = Vec::new();
     let client = Client::new();
     let request_queue = "request";
-    let uri = parse();
 
     // A single connection for multiple local pool producers.
-    let conn = block_on(client.connect(&uri))?;
+    let conn = block_on(client.connect(&cfg.uri))?;
     let mut builder = conn.producer_builder();
     builder.queue(String::from(request_queue));
-    for _ in 0..PRODUCER_THREAD_NR {
+    for _ in 0..cfg.producers {
         let builder = builder.clone();
         let producer = thread::spawn(move || {
             LocalPool::new().run_until(async {
@@ -101,15 +100,17 @@ fn local_pool() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // A single connection for multiple local pool consumers.
-    let conn = block_on(client.connect(&uri))?;
+    let consumers_per_thread = cfg.consumers_per_thread;
+    let consumers = cfg.consumers / consumers_per_thread;
+    let conn = block_on(client.connect(&cfg.uri))?;
     let mut builder = conn.consumer_builder();
     builder.queue(String::from(request_queue));
-    for _ in 0..CONSUMER_THREAD_NR {
+    for _ in 0..consumers {
         let builder = builder.clone();
         let consumer = thread::spawn(move || {
             let mut pool = LocalPool::new();
             let spawner = pool.spawner();
-            for _ in 0..CONSUMER_INSTANCE_NR {
+            for _ in 0..consumers_per_thread {
                 let builder = builder.clone();
                 if let Err(err) = spawner.spawn_local(async move {
                     match builder.build().await {
@@ -190,19 +191,134 @@ impl EchoConsumer {
     }
 }
 
-const TOTAL_PRODUCER_NR: usize = 32;
-const TOTAL_CONSUMER_NR: usize = 64;
-const PRODUCER_THREAD_NR: usize = TOTAL_PRODUCER_NR;
-const CONSUMER_THREAD_NR: usize = 8;
-const CONSUMER_INSTANCE_NR: usize = TOTAL_CONSUMER_NR / CONSUMER_THREAD_NR;
+const PRODUCERS: usize = 32;
+const CONSUMERS: usize = 64;
+const CONSUMERS_PER_THREAD: usize = 8;
 
-fn parse() -> String {
-    let scheme = env::var("AMQP_SCHEME").unwrap_or_default();
-    let user = env::var("AMQP_USERNAME").unwrap_or_default();
-    let pass = env::var("AMQP_PASSWORD").unwrap_or_default();
-    let cluster = env::var("AMQP_CLUSTER").unwrap_or_default();
-    let vhost = env::var("AMQP_VHOST").unwrap_or_default();
-    format!("{}://{}:{}@{}/{}", scheme, user, pass, cluster, vhost)
+struct Config {
+    uri: String,
+    runtime: Runtime,
+    producers: usize,
+    consumers: usize,
+    consumers_per_thread: usize,
+}
+
+impl Config {
+    fn parse() -> Self {
+        use clap::{value_t, App, Arg, SubCommand};
+        let producers_str = PRODUCERS.to_string();
+        let consumers_str = CONSUMERS.to_string();
+        let consumers_per_thread = CONSUMERS_PER_THREAD.to_string();
+        let opts = App::new("rustmq crate example")
+            .author("Keith Noguchi <keith.noguchi@gmail.com>")
+            .arg(
+                Arg::with_name("runtime")
+                    .short("r")
+                    .long("runtime")
+                    .help("Rust runtime")
+                    .takes_value(true)
+                    .default_value("thread-pool")
+                    .possible_values(&["thread-pool", "local-pool"]),
+            )
+            .arg(
+                Arg::with_name("username")
+                    .short("u")
+                    .long("username")
+                    .help("AMQP username")
+                    .takes_value(true)
+                    .default_value("rabbit"),
+            )
+            .arg(
+                Arg::with_name("password")
+                    .short("p")
+                    .long("password")
+                    .help("AMQP password")
+                    .takes_value(true)
+                    .default_value("RabbitMQ"),
+            )
+            .arg(
+                Arg::with_name("scheme")
+                    .short("s")
+                    .long("scheme")
+                    .help("AMQP scheme")
+                    .takes_value(true)
+                    .default_value("amqp")
+                    .possible_values(&["amqp", "amqps"]),
+            )
+            .arg(
+                Arg::with_name("cluster")
+                    .short("c")
+                    .long("cluster")
+                    .help("AMQP cluster")
+                    .takes_value(true)
+                    .default_value("127.0.0.1:5672"),
+            )
+            .arg(
+                Arg::with_name("vhost")
+                    .short("v")
+                    .long("vhost")
+                    .help("AMQP vhost name")
+                    .takes_value(true)
+                    .default_value("mx"),
+            )
+            .subcommand(
+                SubCommand::with_name("tune")
+                    .about("Tuning parameters")
+                    .arg(
+                        Arg::with_name("producers")
+                            .short("p")
+                            .long("producers")
+                            .help("Number of producers")
+                            .takes_value(true)
+                            .default_value(&producers_str),
+                    )
+                    .arg(
+                        Arg::with_name("consumers")
+                            .short("c")
+                            .long("consumers")
+                            .help("Number of consumers")
+                            .takes_value(true)
+                            .default_value(&consumers_str),
+                    )
+                    .arg(
+                        Arg::with_name("consumers-per-thread")
+                            .short("t")
+                            .long("consumers-per-thread")
+                            .help("Number of consumers")
+                            .takes_value(true)
+                            .default_value(&consumers_per_thread),
+                    ),
+            )
+            .get_matches();
+        let runtime = value_t!(opts, "runtime", Runtime).unwrap_or(Runtime::ThreadPool);
+        let scheme = opts.value_of("scheme").unwrap_or("amqp");
+        let user = opts.value_of("username").unwrap_or("rabbit");
+        let pass = opts.value_of("password").unwrap_or("password");
+        let cluster = opts.value_of("cluster").unwrap_or("cluster");
+        let vhost = opts.value_of("vhost").unwrap_or("");
+        let uri = format!("{}://{}:{}@{}/{}", scheme, user, pass, cluster, vhost);
+        let mut producers = PRODUCERS;
+        let mut consumers = PRODUCERS;
+        let mut consumers_per_thread = CONSUMERS_PER_THREAD;
+        if let Some(opts) = opts.subcommand_matches("tune") {
+            if let Ok(val) = value_t!(opts, "producers", usize) {
+                producers = val;
+            }
+            if let Ok(val) = value_t!(opts, "consumers", usize) {
+                consumers = val;
+            }
+            if let Ok(val) = value_t!(opts, "consumers_per_thread", usize) {
+                consumers_per_thread = val;
+            }
+        }
+        Self {
+            runtime,
+            uri,
+            producers,
+            consumers,
+            consumers_per_thread,
+        }
+    }
 }
 
 mod msg {
