@@ -41,12 +41,12 @@ impl ProducerBuilder {
         }
     }
     /// Specify the exchange name.
-    pub fn with_exchange_name(&mut self, exchange: &str) -> &mut Self {
+    pub fn exchange(&mut self, exchange: &str) -> &mut Self {
         self.ex = exchange.to_string();
         self
     }
     /// Specify the queue name.
-    pub fn with_queue_name(&mut self, queue: &str) -> &mut Self {
+    pub fn queue(&mut self, queue: &str) -> &mut Self {
         self.queue = queue.to_string();
         self
     }
