@@ -40,13 +40,13 @@ impl ConsumerBuilder {
             processor: Box::new(crate::message::EchoProcessor {}),
         }
     }
-    /// Override the default exchange name.
-    pub fn with_exchange(&mut self, exchange: String) -> &mut Self {
+    /// Specify the exchange name.
+    pub fn with_exchange_name(&mut self, exchange: String) -> &mut Self {
         self.ex = exchange;
         self
     }
-    /// Override the default queue name.
-    pub fn with_queue(&mut self, queue: String) -> &mut Self {
+    /// Specify the queue name.
+    pub fn with_queue_name(&mut self, queue: String) -> &mut Self {
         self.queue = queue;
         self
     }

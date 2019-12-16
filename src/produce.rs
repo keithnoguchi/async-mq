@@ -40,11 +40,13 @@ impl ProducerBuilder {
             peeker: Box::new(crate::message::NoopPeeker {}),
         }
     }
-    pub fn with_exchange(&mut self, exchange: String) -> &mut Self {
+    /// Specify the exchange name.
+    pub fn with_exchange_name(&mut self, exchange: String) -> &mut Self {
         self.ex = exchange;
         self
     }
-    pub fn with_queue(&mut self, queue: String) -> &mut Self {
+    /// Specify the queue name.
+    pub fn with_queue_name(&mut self, queue: String) -> &mut Self {
         self.queue = queue;
         self
     }
