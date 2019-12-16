@@ -5,7 +5,7 @@ use futures_util::stream::StreamExt;
 use rustmq::{prelude::*, Error};
 
 arg_enum! {
-    enum Runtime {
+    pub enum Runtime {
         ThreadTokio,
         ThreadPool,
         LocalPool,
@@ -13,7 +13,7 @@ arg_enum! {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let cfg = Config::parse();
+    let cfg = crate::cfg::Config::parse();
     match cfg.runtime {
         Runtime::ThreadTokio => thread_tokio(cfg),
         Runtime::ThreadPool => thread_pool(cfg),
@@ -21,7 +21,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 }
 
-fn thread_tokio(cfg: Config) -> Result<(), Box<dyn std::error::Error>> {
+fn thread_tokio(cfg: crate::cfg::Config) -> Result<(), Box<dyn std::error::Error>> {
     let mut rt = tokio::runtime::Builder::new()
         .threaded_scheduler()
         .build()?;
@@ -71,7 +71,7 @@ fn thread_tokio(cfg: Config) -> Result<(), Box<dyn std::error::Error>> {
     })
 }
 
-fn thread_pool(cfg: Config) -> Result<(), Box<dyn std::error::Error>> {
+fn thread_pool(cfg: crate::cfg::Config) -> Result<(), Box<dyn std::error::Error>> {
     use futures::executor::block_on;
     use futures_executor::{enter, ThreadPool};
     use futures_util::task::SpawnExt;
@@ -125,7 +125,7 @@ fn thread_pool(cfg: Config) -> Result<(), Box<dyn std::error::Error>> {
     }
 }
 
-fn local_pool(cfg: Config) -> Result<(), Box<dyn std::error::Error>> {
+fn local_pool(cfg: crate::cfg::Config) -> Result<(), Box<dyn std::error::Error>> {
     use futures::executor::{block_on, LocalPool};
     use futures_util::task::LocalSpawnExt;
     use std::thread;
@@ -247,135 +247,138 @@ impl EchoConsumer {
     }
 }
 
-const PRODUCERS: usize = 32;
-const CONSUMERS: usize = 64;
-const CONSUMERS_PER_THREAD: usize = 8;
+mod cfg {
+    const PRODUCERS: usize = 32;
+    const CONSUMERS: usize = 64;
+    const CONSUMERS_PER_THREAD: usize = 8;
 
-struct Config {
-    uri: String,
-    queue: String,
-    runtime: Runtime,
-    producers: usize,
-    consumers: usize,
-    consumers_per_thread: usize,
-}
+    pub struct Config {
+        pub uri: String,
+        pub queue: String,
+        pub runtime: super::Runtime,
+        pub producers: usize,
+        pub consumers: usize,
+        pub consumers_per_thread: usize,
+    }
 
-impl Config {
-    fn parse() -> Self {
-        use clap::{value_t, App, Arg, SubCommand};
-        let queue = String::from("request");
-        let producers = PRODUCERS.to_string();
-        let consumers = CONSUMERS.to_string();
-        let consumers_per_thread = CONSUMERS_PER_THREAD.to_string();
-        let opts = App::new("rustmq crate example")
-            .author("Keith Noguchi <keith.noguchi@gmail.com>")
-            .arg(
-                Arg::with_name("runtime")
-                    .short("r")
-                    .long("runtime")
-                    .help("Rust runtime")
-                    .takes_value(true)
-                    .default_value("thread-tokio")
-                    .possible_values(&["thread-tokio", "thread-pool", "local-pool"]),
-            )
-            .arg(
-                Arg::with_name("username")
-                    .short("u")
-                    .long("username")
-                    .help("AMQP username")
-                    .takes_value(true)
-                    .default_value("rabbit"),
-            )
-            .arg(
-                Arg::with_name("password")
-                    .short("p")
-                    .long("password")
-                    .help("AMQP password")
-                    .takes_value(true)
-                    .default_value("RabbitMQ"),
-            )
-            .arg(
-                Arg::with_name("scheme")
-                    .short("s")
-                    .long("scheme")
-                    .help("AMQP scheme")
-                    .takes_value(true)
-                    .default_value("amqp")
-                    .possible_values(&["amqp", "amqps"]),
-            )
-            .arg(
-                Arg::with_name("cluster")
-                    .short("c")
-                    .long("cluster")
-                    .help("AMQP cluster")
-                    .takes_value(true)
-                    .default_value("127.0.0.1:5672"),
-            )
-            .arg(
-                Arg::with_name("vhost")
-                    .short("v")
-                    .long("vhost")
-                    .help("AMQP vhost name")
-                    .takes_value(true)
-                    .default_value("mx"),
-            )
-            .subcommand(
-                SubCommand::with_name("tune")
-                    .about("Tuning parameters")
-                    .arg(
-                        Arg::with_name("producers")
-                            .short("p")
-                            .long("producers")
-                            .help("Number of producers")
-                            .takes_value(true)
-                            .default_value(&producers),
-                    )
-                    .arg(
-                        Arg::with_name("consumers")
-                            .short("c")
-                            .long("consumers")
-                            .help("Number of consumers")
-                            .takes_value(true)
-                            .default_value(&consumers),
-                    )
-                    .arg(
-                        Arg::with_name("consumers-per-thread")
-                            .short("t")
-                            .long("consumers-per-thread")
-                            .help("Number of consumers")
-                            .takes_value(true)
-                            .default_value(&consumers_per_thread),
-                    ),
-            )
-            .get_matches();
-        let runtime = value_t!(opts, "runtime", Runtime).unwrap_or(Runtime::ThreadPool);
-        let scheme = opts.value_of("scheme").unwrap_or("amqp");
-        let user = opts.value_of("username").unwrap_or("rabbit");
-        let pass = opts.value_of("password").unwrap_or("password");
-        let cluster = opts.value_of("cluster").unwrap_or("cluster");
-        let vhost = opts.value_of("vhost").unwrap_or("");
-        let uri = format!("{}://{}:{}@{}/{}", scheme, user, pass, cluster, vhost);
-        let mut producers = PRODUCERS;
-        let mut consumers = PRODUCERS;
-        let mut consumers_per_thread = CONSUMERS_PER_THREAD;
-        if let Some(opts) = opts.subcommand_matches("tune") {
-            if let Ok(val) = value_t!(opts, "producers", usize) {
-                producers = val;
+    impl Config {
+        pub fn parse() -> Self {
+            use clap::{value_t, App, Arg, SubCommand};
+            let queue = String::from("request");
+            let producers = PRODUCERS.to_string();
+            let consumers = CONSUMERS.to_string();
+            let consumers_per_thread = CONSUMERS_PER_THREAD.to_string();
+            let opts = App::new("rustmq crate example")
+                .author("Keith Noguchi <keith.noguchi@gmail.com>")
+                .arg(
+                    Arg::with_name("runtime")
+                        .short("r")
+                        .long("runtime")
+                        .help("Rust runtime")
+                        .takes_value(true)
+                        .default_value("thread-tokio")
+                        .possible_values(&["thread-tokio", "thread-pool", "local-pool"]),
+                )
+                .arg(
+                    Arg::with_name("username")
+                        .short("u")
+                        .long("username")
+                        .help("AMQP username")
+                        .takes_value(true)
+                        .default_value("rabbit"),
+                )
+                .arg(
+                    Arg::with_name("password")
+                        .short("p")
+                        .long("password")
+                        .help("AMQP password")
+                        .takes_value(true)
+                        .default_value("RabbitMQ"),
+                )
+                .arg(
+                    Arg::with_name("scheme")
+                        .short("s")
+                        .long("scheme")
+                        .help("AMQP scheme")
+                        .takes_value(true)
+                        .default_value("amqp")
+                        .possible_values(&["amqp", "amqps"]),
+                )
+                .arg(
+                    Arg::with_name("cluster")
+                        .short("c")
+                        .long("cluster")
+                        .help("AMQP cluster")
+                        .takes_value(true)
+                        .default_value("127.0.0.1:5672"),
+                )
+                .arg(
+                    Arg::with_name("vhost")
+                        .short("v")
+                        .long("vhost")
+                        .help("AMQP vhost name")
+                        .takes_value(true)
+                        .default_value("mx"),
+                )
+                .subcommand(
+                    SubCommand::with_name("tune")
+                        .about("Tuning parameters")
+                        .arg(
+                            Arg::with_name("producers")
+                                .short("p")
+                                .long("producers")
+                                .help("Number of producers")
+                                .takes_value(true)
+                                .default_value(&producers),
+                        )
+                        .arg(
+                            Arg::with_name("consumers")
+                                .short("c")
+                                .long("consumers")
+                                .help("Number of consumers")
+                                .takes_value(true)
+                                .default_value(&consumers),
+                        )
+                        .arg(
+                            Arg::with_name("consumers-per-thread")
+                                .short("t")
+                                .long("consumers-per-thread")
+                                .help("Number of consumers")
+                                .takes_value(true)
+                                .default_value(&consumers_per_thread),
+                        ),
+                )
+                .get_matches();
+            let runtime =
+                value_t!(opts, "runtime", super::Runtime).unwrap_or(super::Runtime::ThreadPool);
+            let scheme = opts.value_of("scheme").unwrap_or("amqp");
+            let user = opts.value_of("username").unwrap_or("rabbit");
+            let pass = opts.value_of("password").unwrap_or("password");
+            let cluster = opts.value_of("cluster").unwrap_or("cluster");
+            let vhost = opts.value_of("vhost").unwrap_or("");
+            let uri = format!("{}://{}:{}@{}/{}", scheme, user, pass, cluster, vhost);
+            let mut producers = PRODUCERS;
+            let mut consumers = PRODUCERS;
+            let mut consumers_per_thread = CONSUMERS_PER_THREAD;
+            if let Some(opts) = opts.subcommand_matches("tune") {
+                if let Ok(val) = value_t!(opts, "producers", usize) {
+                    producers = val;
+                }
+                if let Ok(val) = value_t!(opts, "consumers", usize) {
+                    consumers = val;
+                }
+                if let Ok(val) = value_t!(opts, "consumers_per_thread", usize) {
+                    consumers_per_thread = val;
+                }
             }
-            if let Ok(val) = value_t!(opts, "consumers", usize) {
-                consumers = val;
+            Self {
+                uri,
+                queue,
+                runtime,
+                producers,
+                consumers,
+                consumers_per_thread,
             }
-            if let Ok(val) = value_t!(opts, "consumers_per_thread", usize) {
-                consumers_per_thread = val;
-            }
-        }
-        Self {
-            uri,
-            queue,
-            runtime,
-            producers,
-            consumers,
-            consumers_per_thread,
         }
     }
 }

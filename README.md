@@ -38,7 +38,7 @@ Here is the `tokio`'s [Threaded scheduler] example, as in [main.rs]:
 [threaded scheduler]: https://docs.rs/tokio/latest/tokio/runtime/index.html#threaded-scheduler
 
 ```sh
-fn thread_tokio(cfg: Config) -> Result<(), Box<dyn std::error::Error>> {
+fn thread_tokio(cfg: crate::cfg::Config) -> Result<(), Box<dyn std::error::Error>> {
     let mut rt = tokio::runtime::Builder::new()
         .threaded_scheduler()
         .build()?;
