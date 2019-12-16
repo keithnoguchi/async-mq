@@ -41,12 +41,12 @@ impl ConsumerBuilder {
         }
     }
     /// Override the default exchange name.
-    pub fn exchange(&mut self, exchange: String) -> &mut Self {
+    pub fn with_exchange(&mut self, exchange: String) -> &mut Self {
         self.ex = exchange;
         self
     }
     /// Override the default queue name.
-    pub fn queue(&mut self, queue: String) -> &mut Self {
+    pub fn with_queue(&mut self, queue: String) -> &mut Self {
         self.queue = queue;
         self
     }
@@ -105,11 +105,21 @@ pub struct Consumer {
 }
 
 impl Consumer {
+    /// Use the provided [MessageProcess] trait object.
+    ///
+    /// [MessageProcess]: ../message/trait.MessageProcess.html
+    pub fn with_processor(
+        &mut self,
+        processor: Box<dyn crate::MessageProcess + Send + Sync>,
+    ) -> &mut Self {
+        self.processor = processor;
+        self
+    }
     pub async fn run(&mut self) -> crate::Result<()> {
         while let Some(msg) = self.consume.next().await {
             match msg {
                 Ok(msg) => {
-                    let req = &crate::Message(msg);
+                    let req = &crate::Message::new(msg);
                     match self.processor.process(req).await {
                         Ok(resp) => self.response(req, &resp).await?,
                         Err(_err) => self.reject(req).await?,
@@ -121,18 +131,18 @@ impl Consumer {
         Ok(())
     }
     pub async fn response(&mut self, req: &crate::Message, resp: &[u8]) -> crate::Result<()> {
-        if let Some(reply_to) = req.0.properties.reply_to() {
-            self.send(reply_to.as_str(), resp).await?;
+        if let Some(reply_to) = req.reply_to() {
+            self.send(reply_to, resp).await?;
         }
         self.ch
-            .basic_ack(req.0.delivery_tag, self.ack_opts.clone())
+            .basic_ack(req.delivery_tag(), self.ack_opts.clone())
             .await
             .map_err(crate::Error::from)?;
         Ok(())
     }
     pub async fn reject(&mut self, req: &crate::Message) -> crate::Result<()> {
         self.ch
-            .basic_reject(req.0.delivery_tag, self.rej_opts.clone())
+            .basic_reject(req.delivery_tag(), self.rej_opts.clone())
             .await
             .map_err(crate::Error::from)?;
         Ok(())
@@ -158,7 +168,7 @@ impl Stream for Consumer {
         let c = &mut self.consume;
         let c = Pin::new(c);
         match c.poll_next(cx) {
-            Poll::Ready(Some(Ok(msg))) => Poll::Ready(Some(Ok(crate::Message(msg)))),
+            Poll::Ready(Some(Ok(msg))) => Poll::Ready(Some(Ok(crate::Message::new(msg)))),
             Poll::Ready(Some(Err(err))) => Poll::Ready(Some(Err(err.into()))),
             Poll::Ready(None) => Poll::Ready(None),
             Poll::Pending => Poll::Pending,

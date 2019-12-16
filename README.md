@@ -33,24 +33,22 @@ through the Rust 1.39 [async-await] feature.  It uses
 [async-await]: https://blog.rust-lang.org/2019/11/07/Async-await-stable.html
 [flatbuffers]: https://google.github.io/flatbuffers/
 
-Here is the main function which executes both producers and consumers
-on the same thread pool:
+Here is the `ThreadPool` example as in [main.rs]:
 
 ```sh
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn thread_pool(cfg: Config) -> Result<(), Box<dyn std::error::Error>> {
     let pool = ThreadPool::new()?;
     let client = Client::new();
     let request_queue = "request";
-    let uri = parse();
 
     // One connection for multiple thread pool producers and consumers each.
-    let producer_conn = block_on(client.connect(&uri))?;
-    let consumer_conn = block_on(client.connect(&uri))?;
+    let producer_conn = block_on(client.connect(&cfg.uri))?;
+    let consumer_conn = block_on(client.connect(&cfg.uri))?;
 
     let enter = enter()?;
     let mut builder = producer_conn.producer_builder();
-    builder.queue(String::from(request_queue));
-    for _ in 0..TOTAL_PRODUCER_NR {
+    builder.with_queue(String::from(request_queue));
+    for _ in 0..cfg.producers {
         let builder = builder.clone();
         pool.spawn(async move {
             match builder.build().await {
@@ -65,8 +63,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         })?;
     }
     let mut builder = consumer_conn.consumer_builder();
-    builder.queue(String::from(request_queue));
-    for _ in 0..TOTAL_CONSUMER_NR {
+    builder.with_queue(String::from(request_queue));
+    for _ in 0..cfg.consumers {
         let builder = builder.clone();
         pool.spawn(async move {
             match builder.build().await {

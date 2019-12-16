@@ -40,17 +40,17 @@ impl ProducerBuilder {
             peeker: Box::new(crate::message::NoopPeeker {}),
         }
     }
-    pub fn exchange(&mut self, exchange: String) -> &mut Self {
+    pub fn with_exchange(&mut self, exchange: String) -> &mut Self {
         self.ex = exchange;
         self
     }
-    pub fn queue(&mut self, queue: String) -> &mut Self {
+    pub fn with_queue(&mut self, queue: String) -> &mut Self {
         self.queue = queue;
         self
     }
-    /// Use the provided [ProducerHandler] trait object.
+    /// Use the provided [MessagePeek] trait object.
     ///
-    /// [ProducerHandler]: trait.ProducerHandler.html
+    /// [MessagePeek]: ../message/trait.MessagePeek.html
     pub fn with_peeker(&mut self, peeker: Box<dyn crate::MessagePeek + Send + Sync>) -> &mut Self {
         self.peeker = peeker;
         self
@@ -152,7 +152,7 @@ impl Producer {
             .map_err(crate::Error::from)?;
         if let Some(msg) = self.consume.next().await {
             match msg {
-                Ok(msg) => return self.recv(&crate::Message(msg)).await,
+                Ok(msg) => return self.recv(&crate::Message::new(msg)).await,
                 Err(err) => return Err(crate::Error::from(err)),
             }
         }
@@ -162,7 +162,7 @@ impl Producer {
         match self.peeker.peek(msg).await {
             Ok(()) => {
                 self.rx
-                    .basic_ack(msg.0.delivery_tag, self.ack_opts.clone())
+                    .basic_ack(msg.delivery_tag(), self.ack_opts.clone())
                     .await
                     .map_err(crate::Error::from)?;
                 Ok(msg.data().to_vec())
@@ -170,14 +170,14 @@ impl Producer {
             Err(crate::MessageError::Drop) => Ok(vec![]),
             Err(crate::MessageError::Reject) => {
                 self.rx
-                    .basic_reject(msg.0.delivery_tag, self.rej_opts.clone())
+                    .basic_reject(msg.delivery_tag(), self.rej_opts.clone())
                     .await
                     .map_err(crate::Error::from)?;
                 Ok(vec![])
             }
             Err(crate::MessageError::Nack) => {
                 self.rx
-                    .basic_nack(msg.0.delivery_tag, self.nack_opts.clone())
+                    .basic_nack(msg.delivery_tag(), self.nack_opts.clone())
                     .await
                     .map_err(crate::Error::from)?;
                 Ok(vec![])

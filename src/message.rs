@@ -7,7 +7,7 @@ use lapin;
 ///
 /// [lapin::message::Delivery]: https://docs.rs/lapin/latest/lapin/message/struct.Delivery.html
 /// [newtype]: https://doc.rust-lang.org/1.0.0/style/features/types/newtype.html
-pub struct Message(pub lapin::message::Delivery);
+pub struct Message(lapin::message::Delivery);
 
 /// Error actions used both by [MessagePeek] and [MessageProcess]
 /// trait implementations.
@@ -15,7 +15,7 @@ pub struct Message(pub lapin::message::Delivery);
 /// [MessagePeek]: trait.MessagePeek.html
 /// [MessageProcess]: trait.MessageProcess.html
 pub enum MessageError {
-    /// Silently drops the message.
+    /// Silently drop a message.
     Drop,
     /// Reject a message.
     Reject,
@@ -25,8 +25,24 @@ pub enum MessageError {
 
 impl Message {
     #[inline]
+    pub fn new(delivery: lapin::message::Delivery) -> Self {
+        Self(delivery)
+    }
+    #[inline]
     pub fn data(&self) -> &[u8] {
         &self.0.data
+    }
+    #[inline]
+    pub fn delivery_tag(&self) -> u64 {
+        self.0.delivery_tag
+    }
+    #[inline]
+    pub fn reply_to(&self) -> Option<&str> {
+        self.0
+            .properties
+            .reply_to()
+            .as_ref()
+            .map(|str| str.as_str())
     }
 }
 
