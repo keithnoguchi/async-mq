@@ -33,57 +33,59 @@ through the Rust 1.39 [async-await] feature.  It uses
 [async-await]: https://blog.rust-lang.org/2019/11/07/Async-await-stable.html
 [flatbuffers]: https://google.github.io/flatbuffers/
 
-Here is the `ThreadPool` example as in [main.rs]:
+Here is the `tokio`'s [Threaded scheduler] example, as in [main.rs]:
+
+[threaded scheduler]: https://docs.rs/tokio/latest/tokio/runtime/index.html#threaded-scheduler
 
 ```sh
-fn thread_pool(cfg: Config) -> Result<(), Box<dyn std::error::Error>> {
-    let pool = ThreadPool::new()?;
+fn thread_tokio(cfg: Config) -> Result<(), Box<dyn std::error::Error>> {
+    let mut rt = tokio::runtime::Builder::new()
+        .threaded_scheduler()
+        .build()?;
     let client = Client::new();
-    let request_queue = "request";
 
-    // One connection for multiple thread pool producers and consumers each.
-    let producer_conn = block_on(client.connect(&cfg.uri))?;
-    let consumer_conn = block_on(client.connect(&cfg.uri))?;
-
-    let enter = enter()?;
-    let mut builder = producer_conn.producer_builder();
-    builder.with_queue(String::from(request_queue));
-    for _ in 0..cfg.producers {
-        let builder = builder.clone();
-        pool.spawn(async move {
-            match builder.build().await {
-                Err(e) => eprintln!("{}", e),
-                Ok(p) => {
-                    let mut p = ASCIIGenerator(p);
-                    if let Err(err) = p.run().await {
-                        eprintln!("{}", err);
+    rt.block_on(async move {
+        // One connection for multiple producers.
+        let conn = client.connect(&cfg.uri).await?;
+        let mut builder = conn.producer_builder();
+        builder.with_queue(String::from(&cfg.queue));
+        for _ in 0..cfg.producers {
+            let builder = builder.clone();
+            tokio::spawn(async move {
+                match builder.build().await {
+                    Err(e) => eprintln!("{}", e),
+                    Ok(p) => {
+                        let mut p = ASCIIGenerator(p);
+                        if let Err(err) = p.run().await {
+                            eprintln!("{}", err);
+                        }
                     }
                 }
-            }
-        })?;
-    }
-    let mut builder = consumer_conn.consumer_builder();
-    builder.with_queue(String::from(request_queue));
-    for _ in 0..cfg.consumers {
-        let builder = builder.clone();
-        pool.spawn(async move {
-            match builder.build().await {
-                Err(err) => eprintln!("{}", err),
-                Ok(c) => {
-                    let mut c = EchoConsumer(c);
-                    if let Err(err) = c.run().await {
-                        eprintln!("{}", err);
+            });
+        }
+        // One connection for multiple consumers.
+        let conn = client.connect(&cfg.uri).await?;
+        let mut builder = conn.consumer_builder();
+        builder.with_queue(String::from(&cfg.queue));
+        for _ in 0..cfg.consumers {
+            let builder = builder.clone();
+            tokio::spawn(async move {
+                match builder.build().await {
+                    Err(err) => eprintln!("{}", err),
+                    Ok(c) => {
+                        let mut c = EchoConsumer(c);
+                        if let Err(err) = c.run().await {
+                            eprintln!("{}", err);
+                        }
                     }
                 }
-            }
-        })?;
-    }
-    drop(enter);
-
-    // idle loop.
-    loop {
-        thread::sleep(std::time::Duration::from_secs(1));
-    }
+            });
+        }
+        // idle loop.
+        loop {
+            tokio::time::delay_for(std::time::Duration::from_millis(1000)).await;
+        }
+    })
 }
 ```
 

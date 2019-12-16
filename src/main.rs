@@ -1,14 +1,12 @@
 // SPDX-License-Identifier: APACHE-2.0 AND MIT
 use clap::arg_enum;
 use flatbuffers::FlatBufferBuilder;
-use futures::executor::{block_on, LocalPool};
-use futures_executor::{enter, ThreadPool};
-use futures_util::{stream::StreamExt, task::LocalSpawnExt, task::SpawnExt};
+use futures_util::stream::StreamExt;
 use rustmq::{prelude::*, Error};
-use std::thread;
 
 arg_enum! {
     enum Runtime {
+        ThreadTokio,
         ThreadPool,
         LocalPool,
     }
@@ -17,15 +15,70 @@ arg_enum! {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cfg = Config::parse();
     match cfg.runtime {
+        Runtime::ThreadTokio => thread_tokio(cfg),
         Runtime::ThreadPool => thread_pool(cfg),
         Runtime::LocalPool => local_pool(cfg),
     }
 }
 
+fn thread_tokio(cfg: Config) -> Result<(), Box<dyn std::error::Error>> {
+    let mut rt = tokio::runtime::Builder::new()
+        .threaded_scheduler()
+        .build()?;
+    let client = Client::new();
+
+    rt.block_on(async move {
+        // One connection for multiple producers.
+        let conn = client.connect(&cfg.uri).await?;
+        let mut builder = conn.producer_builder();
+        builder.with_queue(String::from(&cfg.queue));
+        for _ in 0..cfg.producers {
+            let builder = builder.clone();
+            tokio::spawn(async move {
+                match builder.build().await {
+                    Err(e) => eprintln!("{}", e),
+                    Ok(p) => {
+                        let mut p = ASCIIGenerator(p);
+                        if let Err(err) = p.run().await {
+                            eprintln!("{}", err);
+                        }
+                    }
+                }
+            });
+        }
+        // One connection for multiple consumers.
+        let conn = client.connect(&cfg.uri).await?;
+        let mut builder = conn.consumer_builder();
+        builder.with_queue(String::from(&cfg.queue));
+        for _ in 0..cfg.consumers {
+            let builder = builder.clone();
+            tokio::spawn(async move {
+                match builder.build().await {
+                    Err(err) => eprintln!("{}", err),
+                    Ok(c) => {
+                        let mut c = EchoConsumer(c);
+                        if let Err(err) = c.run().await {
+                            eprintln!("{}", err);
+                        }
+                    }
+                }
+            });
+        }
+        // idle loop.
+        loop {
+            tokio::time::delay_for(std::time::Duration::from_millis(1000)).await;
+        }
+    })
+}
+
 fn thread_pool(cfg: Config) -> Result<(), Box<dyn std::error::Error>> {
+    use futures::executor::block_on;
+    use futures_executor::{enter, ThreadPool};
+    use futures_util::task::SpawnExt;
+    use std::thread;
+
     let pool = ThreadPool::new()?;
     let client = Client::new();
-    let request_queue = "request";
 
     // One connection for multiple thread pool producers and consumers each.
     let producer_conn = block_on(client.connect(&cfg.uri))?;
@@ -33,7 +86,7 @@ fn thread_pool(cfg: Config) -> Result<(), Box<dyn std::error::Error>> {
 
     let enter = enter()?;
     let mut builder = producer_conn.producer_builder();
-    builder.with_queue(String::from(request_queue));
+    builder.with_queue(String::from(&cfg.queue));
     for _ in 0..cfg.producers {
         let builder = builder.clone();
         pool.spawn(async move {
@@ -49,7 +102,7 @@ fn thread_pool(cfg: Config) -> Result<(), Box<dyn std::error::Error>> {
         })?;
     }
     let mut builder = consumer_conn.consumer_builder();
-    builder.with_queue(String::from(request_queue));
+    builder.with_queue(String::from(&cfg.queue));
     for _ in 0..cfg.consumers {
         let builder = builder.clone();
         pool.spawn(async move {
@@ -73,14 +126,17 @@ fn thread_pool(cfg: Config) -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn local_pool(cfg: Config) -> Result<(), Box<dyn std::error::Error>> {
+    use futures::executor::{block_on, LocalPool};
+    use futures_util::task::LocalSpawnExt;
+    use std::thread;
+
     let mut threads = Vec::new();
     let client = Client::new();
-    let request_queue = "request";
 
     // A single connection for multiple local pool producers.
     let conn = block_on(client.connect(&cfg.uri))?;
     let mut builder = conn.producer_builder();
-    builder.with_queue(String::from(request_queue));
+    builder.with_queue(String::from(&cfg.queue));
     for _ in 0..cfg.producers {
         let builder = builder.clone();
         let producer = thread::spawn(move || {
@@ -104,7 +160,7 @@ fn local_pool(cfg: Config) -> Result<(), Box<dyn std::error::Error>> {
     let consumers = cfg.consumers / consumers_per_thread;
     let conn = block_on(client.connect(&cfg.uri))?;
     let mut builder = conn.consumer_builder();
-    builder.with_queue(String::from(request_queue));
+    builder.with_queue(String::from(&cfg.queue));
     for _ in 0..consumers {
         let builder = builder.clone();
         let consumer = thread::spawn(move || {
@@ -197,6 +253,7 @@ const CONSUMERS_PER_THREAD: usize = 8;
 
 struct Config {
     uri: String,
+    queue: String,
     runtime: Runtime,
     producers: usize,
     consumers: usize,
@@ -206,8 +263,9 @@ struct Config {
 impl Config {
     fn parse() -> Self {
         use clap::{value_t, App, Arg, SubCommand};
-        let producers_str = PRODUCERS.to_string();
-        let consumers_str = CONSUMERS.to_string();
+        let queue = String::from("request");
+        let producers = PRODUCERS.to_string();
+        let consumers = CONSUMERS.to_string();
         let consumers_per_thread = CONSUMERS_PER_THREAD.to_string();
         let opts = App::new("rustmq crate example")
             .author("Keith Noguchi <keith.noguchi@gmail.com>")
@@ -217,8 +275,8 @@ impl Config {
                     .long("runtime")
                     .help("Rust runtime")
                     .takes_value(true)
-                    .default_value("thread-pool")
-                    .possible_values(&["thread-pool", "local-pool"]),
+                    .default_value("thread-tokio")
+                    .possible_values(&["thread-tokio", "thread-pool", "local-pool"]),
             )
             .arg(
                 Arg::with_name("username")
@@ -270,7 +328,7 @@ impl Config {
                             .long("producers")
                             .help("Number of producers")
                             .takes_value(true)
-                            .default_value(&producers_str),
+                            .default_value(&producers),
                     )
                     .arg(
                         Arg::with_name("consumers")
@@ -278,7 +336,7 @@ impl Config {
                             .long("consumers")
                             .help("Number of consumers")
                             .takes_value(true)
-                            .default_value(&consumers_str),
+                            .default_value(&consumers),
                     )
                     .arg(
                         Arg::with_name("consumers-per-thread")
@@ -312,8 +370,9 @@ impl Config {
             }
         }
         Self {
-            runtime,
             uri,
+            queue,
+            runtime,
             producers,
             consumers,
             consumers_per_thread,

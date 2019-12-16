@@ -9,11 +9,11 @@ edition = "2018"
 
 [dependencies]
 async-trait = "^0.1"
-cookie-factory = "^0.3"
+clap = "^2.33"
+flatbuffers = "^0.6"
 futures = "^0.3"
 futures-util = "^0.3"
+cookie-factory = "^0.3"
 lapin = { version = "^0.28", features = ["futures"] }
 futures-executor = { version = "^0.3", features = ["thread-pool"] }
-flatbuffers = "^0.6"
-clap = "^2.33"
-tokio = "^0.2"
+tokio = { version = "^0.2", features = ["rt-core", "rt-threaded", "time"] }
