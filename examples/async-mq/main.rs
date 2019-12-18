@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: APACHE-2.0 AND MIT
+// SPDX-License-Identifier: Apache-2.0 AND MIT
 use flatbuffers::FlatBufferBuilder;
 use futures_util::stream::StreamExt;
-use rustmq::{prelude::*, Error};
+use async_mq::{prelude::*, Error};
 
 pub enum Runtime {
     TokioThreaded,
@@ -276,12 +276,10 @@ mod cfg {
     impl Config {
         pub fn parse() -> Self {
             use clap::{value_t, App, Arg, SubCommand};
-            let exchange = String::from("ex");
-            let queue = String::from("request");
             let producers = PRODUCERS.to_string();
             let consumers = CONSUMERS.to_string();
             let consumers_per_thread = CONSUMERS_PER_THREAD.to_string();
-            let opts = App::new("rustmq crate example")
+            let opts = App::new("Zero-cost async-await abstraction of lapin AMQP client crate")
                 .author("Keith Noguchi <keith.noguchi@gmail.com>")
                 .arg(
                     Arg::with_name("runtime")
@@ -333,6 +331,22 @@ mod cfg {
                         .takes_value(true)
                         .default_value("mx"),
                 )
+                .arg(
+                    Arg::with_name("exchange")
+                        .short("x")
+                        .long("exchange")
+                        .help("AMQP exchange name")
+                        .takes_value(true)
+                        .default_value("async-mq"),
+                )
+                .arg(
+                    Arg::with_name("queue")
+                        .short("q")
+                        .long("queue")
+                        .help("AMQP queue name")
+                        .takes_value(true)
+                        .default_value("request"),
+                )
                 .subcommand(
                     SubCommand::with_name("tune")
                         .about("Tuning parameters")
@@ -363,12 +377,14 @@ mod cfg {
                 )
                 .get_matches();
             let runtime = value_t!(opts, "runtime", super::Runtime).unwrap();
-            let scheme = opts.value_of("scheme").unwrap_or("amqp");
-            let user = opts.value_of("username").unwrap_or("rabbit");
-            let pass = opts.value_of("password").unwrap_or("password");
-            let cluster = opts.value_of("cluster").unwrap_or("cluster");
-            let vhost = opts.value_of("vhost").unwrap_or("");
+            let scheme = opts.value_of("scheme").unwrap();
+            let user = opts.value_of("username").unwrap();
+            let pass = opts.value_of("password").unwrap();
+            let cluster = opts.value_of("cluster").unwrap();
+            let vhost = opts.value_of("vhost").unwrap();
             let uri = format!("{}://{}:{}@{}/{}", scheme, user, pass, cluster, vhost);
+            let exchange = opts.value_of("exchange").unwrap();
+            let queue = opts.value_of("queue").unwrap();
             let mut producers = PRODUCERS;
             let mut consumers = PRODUCERS;
             let mut consumers_per_thread = CONSUMERS_PER_THREAD;
@@ -385,8 +401,8 @@ mod cfg {
             }
             Self {
                 uri,
-                exchange,
-                queue,
+                exchange: exchange.to_string(),
+                queue: queue.to_string(),
                 runtime,
                 producers,
                 consumers,
@@ -404,7 +420,7 @@ mod msg {
         clippy::redundant_closure,
         clippy::redundant_static_lifetimes
     )]
-    include!("../schema/model_generated.rs");
+    include!("./schema/model_generated.rs");
 
     pub use model::get_root_as_message;
     pub use model::{Message, MessageArgs, MessageBuilder, MessageType};

@@ -1,11 +1,12 @@
-# SPDX-License-Identifier: APACHE-2.0 AND MIT
+# SPDX-License-Identifier: Apache-2.0 AND MIT
 [package]
-name = "rustmq"
-version = "0.1.0"
+name = "async-mq"
+version = "1.0.0"
 authors = ["Keith Noguchi <keith.noguchi@gmail.com>"]
 edition = "2018"
-keywords = ["async/await", "future", "amqp", "rabbitmq", "lapin"]
-license = "APACHE-2.0 AND MIT"
+keywords = ["async-await", "future", "amqp", "rabbitmq", "lapin"]
+license = "Apache-2.0 AND MIT"
+description = "Zero-cost async-await abstraction of lapin AMQP client crate"
 
 [dependencies]
 async-trait = "^0.1"
@@ -17,5 +18,5 @@ lapin = { version = "^0.28", features = ["futures"] }
 [dev-dependencies]
 clap = "^2.33"
 flatbuffers = "^0.6"
-futures-executor = { version = "^0.3", features = ["thread-pool"] }
 tokio = { version = "^0.2", features = ["rt-core", "rt-threaded", "time"] }
+futures-executor = { version = "^0.3", features = ["thread-pool"] }

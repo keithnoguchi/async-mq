@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: APACHE-2.0 AND MIT
+# SPDX-License-Identifier: Apache-2.0 AND MIT
 FROM archlinux/base
 RUN pacman -Sy --noconfirm make gcc pkgconf rustup flatbuffers
 # Let's update the rustc and the like to include the latest features,

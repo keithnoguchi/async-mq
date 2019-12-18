@@ -1,15 +1,16 @@
-# rustmq
+# async-mq
 
-Zero-cost abstraction of [lapin] [AMQP] client crate
+Zero-cost [async-await] abstraction of [lapin] [AMQP] client crate
 
+[async-await]: https://blog.rust-lang.org/2019/11/07/Async-await-stable.html
 [lapin]: https://crates.io/crates/lapin
 [amqp]: https://www.amqp.org
 
-[![DroneCI]](https://cloud.drone.io/keithnoguchi/rustmq)
-[![CircleCI]](https://circleci.com/gh/keithnoguchi/workflows/rustmq)
+[![DroneCI]](https://cloud.drone.io/keithnoguchi/async-mq)
+[![CircleCI]](https://circleci.com/gh/keithnoguchi/workflows/async-mq)
 
-[DroneCI]: https://cloud.drone.io/api/badges/keithnoguchi/rustmq/status.svg
-[CircleCI]: https://circleci.com/gh/keithnoguchi/rustmq.svg?style=svg
+[DroneCI]: https://cloud.drone.io/api/badges/keithnoguchi/async-mq/status.svg
+[CircleCI]: https://circleci.com/gh/keithnoguchi/async-mq.svg?style=svg
 
 ## Modules
 
@@ -25,12 +26,11 @@ Zero-cost abstraction of [lapin] [AMQP] client crate
 
 ## Example
 
-Currently, [examples/rustmq/main.rs] demonstrates the RabbitMQ RPC pattern
+Currently, [main.rs] demonstrates the RabbitMQ RPC pattern
 through the Rust 1.39 [async-await] feature.  It uses
 [FlatBuffers] for the message encoding/decoding.
 
-[examples/rustmq/main.rs]: examples/rustmq/main.rs
-[async-await]: https://blog.rust-lang.org/2019/11/07/Async-await-stable.html
+[main.rs]: examples/async-mq/main.rs
 [flatbuffers]: https://google.github.io/flatbuffers/
 
 Here is the `tokio`'s [Threaded scheduler] example, as in [main.rs]:
@@ -159,9 +159,9 @@ It dumps printable ascii characters to the stderr.
 
 ```sh
 $ make run
-   Compiling rustmq v0.3.0 (/home/kei/git/rustmq)
+   Compiling async-mq v0.3.0 (/home/kei/git/async-mq)
     Finished dev [unoptimized + debuginfo] target(s) in 1.63s
-     Running `target/debug/rustmq`
+     Running `target/debug/examples/async-mq`
 !!!!!!!!!!!"!!"!!!!!!!!!"!!""!!!!!!!"!""""#"""#""""#""#"""""#""#"#"##""#"$##"$#######$######$$###$##$$$$$%$$%#$#$$$$$$%$$$
 $$$%%$$$%$%%%$%%&%&%%$%%%%%%%&%%%%&%&%&%&&%&'&%&%%&&&&&&&&''&'&&&&&'&&'''(&&&'''('''''('&'''''(''(&'(''('()'()('(()((()(((
 ()'()()(()((()*'((*()*())))*)**))))))))(+)*))*))(+*)*+*)*+*+*****+*,****+)**+*+**+,)*+,*,+++,+,++++-,+++*++++,+*-,,++,-,,-

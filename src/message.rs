@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: APACHE-2.0 AND MIT
+// SPDX-License-Identifier: Apache-2.0 AND MIT
 //! `Message` struct, `MessagePeek` and `MessageProcess` trait
 use async_trait::async_trait;
 use lapin;

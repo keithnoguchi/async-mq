@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: APACHE-2.0 AND MIT
+// SPDX-License-Identifier: Apache-2.0 AND MIT
 //! `ConsumerBuilder` and `Consumer` structs
 use futures::stream::{Stream, StreamExt};
 use lapin;

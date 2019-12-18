@@ -1,25 +1,29 @@
-# SPDX-License-Identifier: APACHE-2.0 AND MIT
-.PHONY: build check test test-release clean run run-release install update \
+# SPDX-License-Identifier: Apache-2.0 AND MIT
+TARGET := async-mq
+.PHONY: build check test clean run release release-test release-run install update \
 	readme fmt lint doc doc-all doc-crate readme fmt lint
 all: fmt lint test
 build:
-	@cd examples/schema && flatc --rust *.fbs
+	@cd examples/$(TARGET)/schema && flatc --rust *.fbs
 check:
 	@cargo check
-test:
+test: build
 	@cargo test
-test-release:
-	@cargo test --release
 clean:
+	@-rm -f examples/$(TARGET)/schema/*_generated.rs
 	@cargo clean
 run: run-tokio
-run-release: run-release-tokio
 run-%: build
-	@cargo run --example rustmq -- --runtime $*
-run-release-%: build
-	@cargo run --release --example rustmq -- --runtime $*
+	@cargo run --example $(TARGET) -- --runtime $*
+release:
+	@cargo build --release
+release-test: build
+	@cargo test --release
+release-run: release-run-tokio
+release-run-%: build
+	@cargo run --release --example $(TARGET) -- --runtime $*
 install: build
-	@cargo install --force --path . --example rustmq
+	@cargo install --force --path . --example $(TARGET)
 update:
 	@cargo update
 readme:
@@ -38,12 +42,12 @@ doc-%:
 # CI targets.
 .PHONY: arch64 ubuntu64
 arch64: arch64-image
-	docker run -v $(PWD):/home/build rustbox/$@ make all clean
+	docker run -v $(PWD):/home/build $(TARGET)/$@ make all clean
 ubuntu64: ubuntu64-image
-	docker run -v $(PWD):/home/build rustbox/$@ make all clean
+	docker run -v $(PWD):/home/build $(TARGET)/$@ make all clean
 %-arch64: arch64-image
-	docker run -v $(PWD):/home/build rustbox/arch64 make $* clean
+	docker run -v $(PWD):/home/build $(TARGET)/arch64 make $* clean
 %-ubuntu64: ubuntu64-image
-	docker run -v $(PWD):/home/build rustbox/ubuntu64 make $* clean
+	docker run -v $(PWD):/home/build $(TARGET)/ubuntu64 make $* clean
 %-image:
-	docker build -t rustbox/$* -f Dockerfile.$* .
+	docker build -t $(TARGET)/$* -f Dockerfile.$* .

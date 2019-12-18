@@ -36,13 +36,13 @@ steps:
       - format
       - lint
       - document
-  - name: test-release
+  - name: release-test
     image: archlinux/base
     commands:
       - pacman -Sy --noconfirm make gcc pkgconf rustup flatbuffers
       - rustup update stable
       - rustup default stable
-      - make test-release
+      - make release-test
     depends_on:
       - format
       - lint
@@ -56,4 +56,4 @@ steps:
       - make install
     depends_on:
       - test
-      - test-release
+      - release-test

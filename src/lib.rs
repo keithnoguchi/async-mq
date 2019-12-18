@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: APACHE-2.0 AND MIT
-//! Zero-cost abstraction of [lapin] [AMQP] client crate
+// SPDX-License-Identifier: Apache-2.0 AND MIT
+//! Zero-cost async-await abstraction of [lapin] [AMQP] client crate
 //!
 //! [lapin]: https://crates.io/crates/lapin
 //! [amqp]: https://www.amqp.org
