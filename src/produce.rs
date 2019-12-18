@@ -30,8 +30,8 @@ impl ProducerBuilder {
     pub fn new(conn: crate::Connection) -> Self {
         Self {
             conn,
-            ex: String::from("exchange"),
-            queue: String::from("queue"),
+            ex: String::from(crate::DEFAULT_EXCHANGE),
+            queue: String::from(crate::DEFAULT_QUEUE),
             kind: lapin::ExchangeKind::Direct,
             ex_opts: lapin::options::ExchangeDeclareOptions::default(),
             queue_opts: lapin::options::QueueDeclareOptions::default(),
@@ -79,7 +79,10 @@ impl ProducerBuilder {
             bind_opts: self.bind_opts.clone(),
             bind_field: self.field_table.clone(),
         };
-        let (rx, q) = self.conn.queue(&self.ex, "", opts).await?;
+        let (rx, q) = self
+            .conn
+            .queue(&self.ex, crate::EPHEMERAL_QUEUE, opts)
+            .await?;
         let consume = rx
             .basic_consume(
                 &q,

@@ -109,9 +109,9 @@ impl Connection {
         Ok((ch, q))
     }
     fn is_default_exchange(name: &str) -> bool {
-        name == ""
+        name == crate::DEFAULT_EXCHANGE
     }
     fn is_ephemeral_queue(name: &str) -> bool {
-        name == ""
+        name == crate::EPHEMERAL_QUEUE
     }
 }

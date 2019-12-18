@@ -4,7 +4,7 @@ use futures_util::stream::StreamExt;
 use rustmq::{prelude::*, Error};
 
 pub enum Runtime {
-    ThreadTokio,
+    TokioThreaded,
     ThreadPool,
     LocalPool,
 }
@@ -12,13 +12,13 @@ pub enum Runtime {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cfg = crate::cfg::Config::parse();
     match cfg.runtime {
-        Runtime::ThreadTokio => thread_tokio(cfg),
+        Runtime::TokioThreaded => tokio_threaded(cfg),
         Runtime::ThreadPool => thread_pool(cfg),
         Runtime::LocalPool => local_pool(cfg),
     }
 }
 
-fn thread_tokio(cfg: crate::cfg::Config) -> Result<(), Box<dyn std::error::Error>> {
+fn tokio_threaded(cfg: crate::cfg::Config) -> Result<(), Box<dyn std::error::Error>> {
     let mut rt = tokio::runtime::Builder::new()
         .threaded_scheduler()
         .enable_time()
@@ -134,7 +134,7 @@ fn local_pool(cfg: crate::cfg::Config) -> Result<(), Box<dyn std::error::Error>>
     // A single connection for multiple local pool producers.
     let conn = block_on(client.connect(&cfg.uri))?;
     let mut builder = conn.producer_builder();
-    builder.queue(&cfg.queue);
+    builder.exchange(&cfg.exchange).queue(&cfg.queue);
     for _ in 0..cfg.producers {
         let builder = builder.clone();
         let producer = thread::spawn(move || {
@@ -158,7 +158,7 @@ fn local_pool(cfg: crate::cfg::Config) -> Result<(), Box<dyn std::error::Error>>
     let consumers = cfg.consumers / consumers_per_thread;
     let conn = block_on(client.connect(&cfg.uri))?;
     let mut builder = conn.consumer_builder();
-    builder.queue(&cfg.queue);
+    builder.exchange(&cfg.exchange).queue(&cfg.queue);
     for _ in 0..consumers {
         let builder = builder.clone();
         let consumer = thread::spawn(move || {
@@ -263,12 +263,12 @@ mod cfg {
     impl std::str::FromStr for super::Runtime {
         type Err = std::string::ParseError;
         fn from_str(name: &str) -> Result<Self, Self::Err> {
-            if name.starts_with("local") {
-                Ok(Self::LocalPool)
-            } else if name.ends_with("tokio") {
-                Ok(Self::ThreadTokio)
-            } else {
+            if name.starts_with("tokio") {
+                Ok(Self::TokioThreaded)
+            } else if name.starts_with("thread") {
                 Ok(Self::ThreadPool)
+            } else {
+                Ok(Self::LocalPool)
             }
         }
     }
@@ -289,8 +289,8 @@ mod cfg {
                         .long("runtime")
                         .help("Rust runtime")
                         .takes_value(true)
-                        .default_value("thread-tokio")
-                        .possible_values(&["thread-tokio", "thread-pool", "local-pool"]),
+                        .default_value("tokio")
+                        .possible_values(&["tokio", "thread-pool", "local-pool"]),
                 )
                 .arg(
                     Arg::with_name("username")

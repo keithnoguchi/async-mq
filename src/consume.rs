@@ -31,8 +31,8 @@ impl ConsumerBuilder {
     pub fn new(conn: crate::Connection) -> Self {
         Self {
             conn,
-            ex: String::from(""),
-            queue: String::from(""),
+            ex: String::from(crate::DEFAULT_EXCHANGE),
+            queue: String::from(crate::DEFAULT_QUEUE),
             kind: lapin::ExchangeKind::Direct,
             ex_opts: lapin::options::ExchangeDeclareOptions::default(),
             queue_opts: lapin::options::QueueDeclareOptions::default(),

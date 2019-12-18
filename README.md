@@ -25,11 +25,11 @@ Zero-cost abstraction of [lapin] [AMQP] client crate
 
 ## Example
 
-Currently, [main.rs] demonstrates the RabbitMQ RPC pattern
+Currently, [examples/rustmq/main.rs] demonstrates the RabbitMQ RPC pattern
 through the Rust 1.39 [async-await] feature.  It uses
 [FlatBuffers] for the message encoding/decoding.
 
-[main.rs]: src/main.rs
+[examples/rustmq/main.rs]: examples/rustmq/main.rs
 [async-await]: https://blog.rust-lang.org/2019/11/07/Async-await-stable.html
 [flatbuffers]: https://google.github.io/flatbuffers/
 
@@ -38,7 +38,7 @@ Here is the `tokio`'s [Threaded scheduler] example, as in [main.rs]:
 [threaded scheduler]: https://docs.rs/tokio/latest/tokio/runtime/index.html#threaded-scheduler
 
 ```sh
-fn thread_tokio(cfg: crate::cfg::Config) -> Result<(), Box<dyn std::error::Error>> {
+fn tokio_threaded(cfg: crate::cfg::Config) -> Result<(), Box<dyn std::error::Error>> {
     let mut rt = tokio::runtime::Builder::new()
         .threaded_scheduler()
         .enable_time()
@@ -151,11 +151,14 @@ impl EchoConsumer {
 
 ## Execution
 
-Here is the output of the cargo run.  It dumps printable ascii
-characters to the stderr.
+Here is the output of the make run, which is an alias of `cargo run --example`
+as in [Makefile].
+It dumps printable ascii characters to the stderr.
+
+[Makefile]: Makefile
 
 ```sh
-$ cargo run
+$ make run
    Compiling rustmq v0.3.0 (/home/kei/git/rustmq)
     Finished dev [unoptimized + debuginfo] target(s) in 1.63s
      Running `target/debug/rustmq`

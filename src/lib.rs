@@ -19,6 +19,11 @@ pub mod produce;
 /// internal use cases and won't be published.
 type Result<T> = std::result::Result<T, error::Error>;
 
+/// DEFAULT_EXCHANGE and DEFAULT_QUEUE for both consumers and producers.
+const DEFAULT_EXCHANGE: &str = "";
+const DEFAULT_QUEUE: &str = "";
+const EPHEMERAL_QUEUE: &str = "";
+
 /// A "prelude" for the crate
 ///
 /// This prelude is similar to the standard library's prelude in that you'll

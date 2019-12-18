@@ -3,29 +3,31 @@
 	readme fmt lint doc doc-all doc-crate readme fmt lint
 all: fmt lint test
 build:
-	@cd schema && flatc --rust *.fbs
-check: build
+	@cd examples/schema && flatc --rust *.fbs
+check:
 	@cargo check
-test: build
+test:
 	@cargo test
-test-release: build
+test-release:
 	@cargo test --release
 clean:
 	@cargo clean
-run: build
-	@cargo run
-run-release: build
-	@cargo run --release
+run: run-tokio
+run-release: run-release-tokio
+run-%: build
+	@cargo run --example rustmq -- --runtime $*
+run-release-%: build
+	@cargo run --release --example rustmq -- --runtime $*
 install: build
-	@cargo install --force --path .
+	@cargo install --force --path . --example rustmq
 update:
 	@cargo update
 readme:
 	@cargo install cargo-readme
 	@cargo readme > README.md
-fmt: build
+fmt:
 	@rustfmt --edition 2018 --check src/*.rs
-lint: build
+lint:
 	@cargo clippy -- -D warnings
 doc: doc-crate
 doc-all: doc-crate doc-book doc-std
