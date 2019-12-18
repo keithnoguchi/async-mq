@@ -1,15 +1,12 @@
 // SPDX-License-Identifier: APACHE-2.0 AND MIT
-use clap::arg_enum;
 use flatbuffers::FlatBufferBuilder;
 use futures_util::stream::StreamExt;
 use rustmq::{prelude::*, Error};
 
-arg_enum! {
-    pub enum Runtime {
-        ThreadTokio,
-        ThreadPool,
-        LocalPool,
-    }
+pub enum Runtime {
+    ThreadTokio,
+    ThreadPool,
+    LocalPool,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -24,6 +21,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 fn thread_tokio(cfg: crate::cfg::Config) -> Result<(), Box<dyn std::error::Error>> {
     let mut rt = tokio::runtime::Builder::new()
         .threaded_scheduler()
+        .enable_time()
         .build()?;
     let client = Client::new();
 
@@ -31,7 +29,7 @@ fn thread_tokio(cfg: crate::cfg::Config) -> Result<(), Box<dyn std::error::Error
         // One connection for multiple producers.
         let conn = client.connect(&cfg.uri).await?;
         let mut builder = conn.producer_builder();
-        builder.queue(&cfg.queue);
+        builder.exchange(&cfg.exchange).queue(&cfg.queue);
         for _ in 0..cfg.producers {
             let builder = builder.clone();
             tokio::spawn(async move {
@@ -49,7 +47,7 @@ fn thread_tokio(cfg: crate::cfg::Config) -> Result<(), Box<dyn std::error::Error
         // One connection for multiple consumers.
         let conn = client.connect(&cfg.uri).await?;
         let mut builder = conn.consumer_builder();
-        builder.queue(&cfg.queue);
+        builder.exchange(&cfg.exchange).queue(&cfg.queue);
         for _ in 0..cfg.consumers {
             let builder = builder.clone();
             tokio::spawn(async move {
@@ -86,7 +84,7 @@ fn thread_pool(cfg: crate::cfg::Config) -> Result<(), Box<dyn std::error::Error>
 
     let enter = enter()?;
     let mut builder = producer_conn.producer_builder();
-    builder.queue(&cfg.queue);
+    builder.exchange(&cfg.exchange).queue(&cfg.queue);
     for _ in 0..cfg.producers {
         let builder = builder.clone();
         pool.spawn(async move {
@@ -102,7 +100,7 @@ fn thread_pool(cfg: crate::cfg::Config) -> Result<(), Box<dyn std::error::Error>
         })?;
     }
     let mut builder = consumer_conn.consumer_builder();
-    builder.queue(&cfg.queue);
+    builder.exchange(&cfg.exchange).queue(&cfg.queue);
     for _ in 0..cfg.consumers {
         let builder = builder.clone();
         pool.spawn(async move {
@@ -254,6 +252,7 @@ mod cfg {
 
     pub struct Config {
         pub uri: String,
+        pub exchange: String,
         pub queue: String,
         pub runtime: super::Runtime,
         pub producers: usize,
@@ -261,9 +260,23 @@ mod cfg {
         pub consumers_per_thread: usize,
     }
 
+    impl std::str::FromStr for super::Runtime {
+        type Err = std::string::ParseError;
+        fn from_str(name: &str) -> Result<Self, Self::Err> {
+            if name.starts_with("local") {
+                Ok(Self::LocalPool)
+            } else if name.ends_with("tokio") {
+                Ok(Self::ThreadTokio)
+            } else {
+                Ok(Self::ThreadPool)
+            }
+        }
+    }
+
     impl Config {
         pub fn parse() -> Self {
             use clap::{value_t, App, Arg, SubCommand};
+            let exchange = String::from("ex");
             let queue = String::from("request");
             let producers = PRODUCERS.to_string();
             let consumers = CONSUMERS.to_string();
@@ -349,8 +362,7 @@ mod cfg {
                         ),
                 )
                 .get_matches();
-            let runtime =
-                value_t!(opts, "runtime", super::Runtime).unwrap_or(super::Runtime::ThreadPool);
+            let runtime = value_t!(opts, "runtime", super::Runtime).unwrap();
             let scheme = opts.value_of("scheme").unwrap_or("amqp");
             let user = opts.value_of("username").unwrap_or("rabbit");
             let pass = opts.value_of("password").unwrap_or("password");
@@ -373,6 +385,7 @@ mod cfg {
             }
             Self {
                 uri,
+                exchange,
                 queue,
                 runtime,
                 producers,

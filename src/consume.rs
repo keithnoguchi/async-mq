@@ -14,7 +14,10 @@ pub struct ConsumerBuilder {
     conn: crate::Connection,
     ex: String,
     queue: String,
+    kind: lapin::ExchangeKind,
+    ex_opts: lapin::options::ExchangeDeclareOptions,
     queue_opts: lapin::options::QueueDeclareOptions,
+    bind_opts: lapin::options::QueueBindOptions,
     field_table: lapin::types::FieldTable,
     tx_props: lapin::BasicProperties,
     tx_opts: lapin::options::BasicPublishOptions,
@@ -30,7 +33,10 @@ impl ConsumerBuilder {
             conn,
             ex: String::from(""),
             queue: String::from(""),
+            kind: lapin::ExchangeKind::Direct,
+            ex_opts: lapin::options::ExchangeDeclareOptions::default(),
             queue_opts: lapin::options::QueueDeclareOptions::default(),
+            bind_opts: lapin::options::QueueBindOptions::default(),
             field_table: lapin::types::FieldTable::default(),
             tx_props: lapin::BasicProperties::default(),
             tx_opts: lapin::options::BasicPublishOptions::default(),
@@ -61,14 +67,16 @@ impl ConsumerBuilder {
         self
     }
     pub async fn build(&self) -> crate::Result<Consumer> {
-        let (ch, q) = self
-            .conn
-            .channel(
-                &self.queue,
-                self.queue_opts.clone(),
-                self.field_table.clone(),
-            )
-            .await?;
+        let opts = crate::client::QueueOptions {
+            kind: self.kind.clone(),
+            ex_opts: self.ex_opts.clone(),
+            ex_field: self.field_table.clone(),
+            queue_opts: self.queue_opts.clone(),
+            queue_field: self.field_table.clone(),
+            bind_opts: self.bind_opts.clone(),
+            bind_field: self.field_table.clone(),
+        };
+        let (ch, q) = self.conn.queue(&self.ex, &self.queue, opts).await?;
         let consume = ch
             .clone()
             .basic_consume(
@@ -82,6 +90,7 @@ impl ConsumerBuilder {
         Ok(Consumer {
             ch,
             consume,
+            ex: self.ex.clone(),
             tx_props: self.tx_props.clone(),
             tx_opts: self.tx_opts.clone(),
             ack_opts: self.ack_opts.clone(),
@@ -97,6 +106,7 @@ impl ConsumerBuilder {
 pub struct Consumer {
     ch: lapin::Channel,
     consume: lapin::Consumer,
+    ex: String,
     tx_props: lapin::BasicProperties,
     tx_opts: lapin::options::BasicPublishOptions,
     ack_opts: lapin::options::BasicAckOptions,
@@ -147,11 +157,11 @@ impl Consumer {
             .map_err(crate::Error::from)?;
         Ok(())
     }
-    async fn send(&mut self, queue: &str, msg: &[u8]) -> crate::Result<()> {
+    async fn send(&mut self, routing_key: &str, msg: &[u8]) -> crate::Result<()> {
         self.ch
             .basic_publish(
-                "",
-                &queue,
+                &self.ex,
+                &routing_key,
                 self.tx_opts.clone(),
                 msg.to_vec(),
                 self.tx_props.clone(),

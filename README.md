@@ -41,6 +41,7 @@ Here is the `tokio`'s [Threaded scheduler] example, as in [main.rs]:
 fn thread_tokio(cfg: crate::cfg::Config) -> Result<(), Box<dyn std::error::Error>> {
     let mut rt = tokio::runtime::Builder::new()
         .threaded_scheduler()
+        .enable_time()
         .build()?;
     let client = Client::new();
 
@@ -48,7 +49,7 @@ fn thread_tokio(cfg: crate::cfg::Config) -> Result<(), Box<dyn std::error::Error
         // One connection for multiple producers.
         let conn = client.connect(&cfg.uri).await?;
         let mut builder = conn.producer_builder();
-        builder.with_queue(String::from(&cfg.queue));
+        builder.exchange(&cfg.exchange).queue(&cfg.queue);
         for _ in 0..cfg.producers {
             let builder = builder.clone();
             tokio::spawn(async move {
@@ -66,7 +67,7 @@ fn thread_tokio(cfg: crate::cfg::Config) -> Result<(), Box<dyn std::error::Error
         // One connection for multiple consumers.
         let conn = client.connect(&cfg.uri).await?;
         let mut builder = conn.consumer_builder();
-        builder.with_queue(String::from(&cfg.queue));
+        builder.exchange(&cfg.exchange).queue(&cfg.queue);
         for _ in 0..cfg.consumers {
             let builder = builder.clone();
             tokio::spawn(async move {

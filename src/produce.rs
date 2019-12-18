@@ -12,7 +12,10 @@ pub struct ProducerBuilder {
     conn: crate::Connection,
     ex: String,
     queue: String,
+    kind: lapin::ExchangeKind,
+    ex_opts: lapin::options::ExchangeDeclareOptions,
     queue_opts: lapin::options::QueueDeclareOptions,
+    bind_opts: lapin::options::QueueBindOptions,
     field_table: lapin::types::FieldTable,
     tx_props: lapin::BasicProperties,
     tx_opts: lapin::options::BasicPublishOptions,
@@ -27,9 +30,12 @@ impl ProducerBuilder {
     pub fn new(conn: crate::Connection) -> Self {
         Self {
             conn,
-            ex: String::from(""),
-            queue: String::from(""),
+            ex: String::from("exchange"),
+            queue: String::from("queue"),
+            kind: lapin::ExchangeKind::Direct,
+            ex_opts: lapin::options::ExchangeDeclareOptions::default(),
             queue_opts: lapin::options::QueueDeclareOptions::default(),
+            bind_opts: lapin::options::QueueBindOptions::default(),
             field_table: lapin::types::FieldTable::default(),
             tx_props: lapin::BasicProperties::default(),
             tx_opts: lapin::options::BasicPublishOptions::default(),
@@ -58,24 +64,22 @@ impl ProducerBuilder {
         self
     }
     pub async fn build(&self) -> crate::Result<Producer> {
-        let tx = self
-            .conn
-            .channel(
-                &self.queue,
-                self.queue_opts.clone(),
-                self.field_table.clone(),
-            )
-            .await
-            .map(|(ch, _)| ch)?;
-        let opts = lapin::options::QueueDeclareOptions {
+        let tx = self.conn.channel().await?;
+        let queue_opts = lapin::options::QueueDeclareOptions {
             exclusive: true,
             auto_delete: true,
             ..self.queue_opts.clone()
         };
-        let (rx, q) = self
-            .conn
-            .channel("", opts, self.field_table.clone())
-            .await?;
+        let opts = crate::client::QueueOptions {
+            kind: self.kind.clone(),
+            ex_opts: self.ex_opts.clone(),
+            ex_field: self.field_table.clone(),
+            queue_opts,
+            queue_field: self.field_table.clone(),
+            bind_opts: self.bind_opts.clone(),
+            bind_field: self.field_table.clone(),
+        };
+        let (rx, q) = self.conn.queue(&self.ex, "", opts).await?;
         let consume = rx
             .basic_consume(
                 &q,
