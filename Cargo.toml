@@ -1,12 +1,18 @@
 # SPDX-License-Identifier: Apache-2.0 AND MIT
 [package]
 name = "async-mq"
-version = "1.0.0"
+version = "1.0.1"
 authors = ["Keith Noguchi <keith.noguchi@gmail.com>"]
 edition = "2018"
 keywords = ["async-await", "future", "amqp", "rabbitmq", "lapin"]
 license = "Apache-2.0 AND MIT"
 description = "Zero-cost async-await abstraction of lapin AMQP client crate"
+readme = "README.md"
+repository = "https://github.com/keithnoguchi/async-mq"
+categories = ["asynchronous", "api-bindings"]
+
+[badges]
+circle-ci = { repository = "keithnoguchi/async-mq", branch = "master" }
 
 [dependencies]
 async-trait = "^0.1"

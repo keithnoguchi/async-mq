@@ -6,9 +6,11 @@ Zero-cost [async-await] abstraction of [lapin] [AMQP] client crate
 [lapin]: https://crates.io/crates/lapin
 [amqp]: https://www.amqp.org
 
+[![crates.io]](https://crates.io/crates/async-mq)
 [![DroneCI]](https://cloud.drone.io/keithnoguchi/async-mq)
 [![CircleCI]](https://circleci.com/gh/keithnoguchi/workflows/async-mq)
 
+[crates.io]: https://img.shields.io/crates/v/async-mq.svg
 [DroneCI]: https://cloud.drone.io/api/badges/keithnoguchi/async-mq/status.svg
 [CircleCI]: https://circleci.com/gh/keithnoguchi/async-mq.svg?style=svg
 
