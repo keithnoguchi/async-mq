@@ -28,14 +28,14 @@ Zero-cost [async-await] abstraction of [lapin] [AMQP] client crate
 
 ## Example
 
-Currently, [main.rs] demonstrates the RabbitMQ RPC pattern
+Currently, [mqctl.rs] demonstrates the RabbitMQ RPC pattern
 through the Rust 1.39 [async-await] feature.  It uses
 [FlatBuffers] for the message encoding/decoding.
 
-[main.rs]: examples/async-mq/main.rs
+[mqctl.rs]: examples/mqctl.rs
 [flatbuffers]: https://google.github.io/flatbuffers/
 
-Here is the `tokio`'s [Threaded scheduler] example, as in [main.rs]:
+Here is the `tokio`'s [Threaded scheduler] example, as in [mqctl.rs]:
 
 [threaded scheduler]: https://docs.rs/tokio/latest/tokio/runtime/index.html#threaded-scheduler
 
