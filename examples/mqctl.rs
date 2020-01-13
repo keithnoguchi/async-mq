@@ -279,8 +279,8 @@ mod cfg {
             let producers = PRODUCERS.to_string();
             let consumers = CONSUMERS.to_string();
             let consumers_per_thread = CONSUMERS_PER_THREAD.to_string();
-            let opts = App::new("Zero-cost async-await abstraction of lapin AMQP client crate")
-                .author("Keith Noguchi <keith.noguchi@gmail.com>")
+            let opts = App::new(env!("CARGO_PKG_DESCRIPTION"))
+                .author(env!("CARGO_PKG_AUTHORS"))
                 .arg(
                     Arg::with_name("runtime")
                         .short("r")
