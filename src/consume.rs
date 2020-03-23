@@ -4,6 +4,7 @@ use futures::stream::{Stream, StreamExt};
 use lapin;
 use std::pin::Pin;
 use std::task::{Context, Poll};
+use std::borrow::Borrow;
 
 /// A [non-consuming] [Consumer] builder.
 ///
