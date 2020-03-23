@@ -85,7 +85,7 @@ impl ProducerBuilder {
             .await?;
         let consume = rx
             .basic_consume(
-                &q.borrow(),
+                q.borrow(),
                 "producer",
                 self.rx_opts.clone(),
                 self.field_table.clone(),
