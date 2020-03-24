@@ -236,6 +236,7 @@ mod tests {
     }
     #[test]
     fn from_internal() {
+        use std::sync::Arc;
         struct Test {
             data: Option<lapin::Error>,
             want: crate::Error,
@@ -356,52 +357,52 @@ mod tests {
                 ))),
             },
             Test {
-                data: Some(lapin::Error::SerialisationError(
+                data: Some(lapin::Error::SerialisationError(Arc::new(
                     cookie_factory::GenError::BufferTooSmall(1),
-                )),
-                want: crate::Error::Internal(lapin::Error::SerialisationError(
+                ))),
+                want: crate::Error::Internal(lapin::Error::SerialisationError(Arc::new(
                     cookie_factory::GenError::BufferTooSmall(1),
-                )),
+                ))),
             },
             Test {
-                data: Some(lapin::Error::SerialisationError(
+                data: Some(lapin::Error::SerialisationError(Arc::new(
                     cookie_factory::GenError::BufferTooBig(1024 * 1024 * 1024),
-                )),
-                want: crate::Error::Internal(lapin::Error::SerialisationError(
+                ))),
+                want: crate::Error::Internal(lapin::Error::SerialisationError(Arc::new(
                     cookie_factory::GenError::BufferTooBig(1024 * 1024 * 1024),
-                )),
+                ))),
             },
             Test {
-                data: Some(lapin::Error::SerialisationError(
+                data: Some(lapin::Error::SerialisationError(Arc::new(
                     cookie_factory::GenError::InvalidOffset,
-                )),
-                want: crate::Error::Internal(lapin::Error::SerialisationError(
+                ))),
+                want: crate::Error::Internal(lapin::Error::SerialisationError(Arc::new(
                     cookie_factory::GenError::InvalidOffset,
-                )),
+                ))),
             },
             Test {
-                data: Some(lapin::Error::SerialisationError(
+                data: Some(lapin::Error::SerialisationError(Arc::new(
                     cookie_factory::GenError::IoError(cookie_factory::lib::std::io::Error::new(
                         io::ErrorKind::NotFound,
                         "not found",
                     )),
-                )),
-                want: crate::Error::Internal(lapin::Error::SerialisationError(
+                ))),
+                want: crate::Error::Internal(lapin::Error::SerialisationError(Arc::new(
                     cookie_factory::GenError::IoError(cookie_factory::lib::std::io::Error::new(
                         io::ErrorKind::NotFound,
                         "not found",
                     )),
-                )),
+                ))),
             },
             Test {
-                data: Some(lapin::Error::IOError(io::Error::new(
+                data: Some(lapin::Error::IOError(Arc::new(io::Error::new(
                     ErrorKind::Interrupted,
                     "interrupted",
-                ))),
-                want: crate::Error::Internal(lapin::Error::IOError(io::Error::new(
+                )))),
+                want: crate::Error::Internal(lapin::Error::IOError(Arc::new(io::Error::new(
                     ErrorKind::Interrupted,
                     "interrupted",
-                ))),
+                )))),
             },
         ];
         for t in &mut tests {
