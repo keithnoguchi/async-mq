@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0 AND MIT
 //! `ConsumerBuilder` and `Consumer` structs
 use futures::stream::{Stream, StreamExt};
-use lapin;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 

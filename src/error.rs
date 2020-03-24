@@ -1,7 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0 AND MIT
 //! `Error` enum type
-use cookie_factory;
-use lapin;
 
 /// An error enum.
 pub enum Error {
@@ -74,28 +72,28 @@ impl Error {
                 LapinErr::InvalidChannel(b) => a == b,
                 _ => false,
             },
+            LapinErr::InvalidAck => match b {
+                LapinErr::InvalidAck => true,
+                _ => false,
+            },
             LapinErr::InvalidBodyReceived => match b {
                 LapinErr::InvalidBodyReceived => true,
+                _ => false,
+            },
+            LapinErr::InvalidFrameReceived => match b {
+                LapinErr::InvalidFrameReceived => true,
                 _ => false,
             },
             LapinErr::ConnectionRefused => match b {
                 LapinErr::ConnectionRefused => true,
                 _ => false,
             },
-            LapinErr::NotConnected => match b {
-                LapinErr::NotConnected => true,
-                _ => false,
-            },
             LapinErr::UnexpectedReply => match b {
                 LapinErr::UnexpectedReply => true,
                 _ => false,
             },
-            LapinErr::PreconditionFailed => match b {
-                LapinErr::PreconditionFailed => true,
-                _ => false,
-            },
-            LapinErr::ChannelLimitReached => match b {
-                LapinErr::ChannelLimitReached => true,
+            LapinErr::ChannelsLimitReached => match b {
+                LapinErr::ChannelsLimitReached => true,
                 _ => false,
             },
             LapinErr::InvalidChannelState(a) => match b {
@@ -177,20 +175,12 @@ mod tests {
                 want: String::from("ConnectionRefused"),
             },
             Test {
-                data: crate::Error::Internal(lapin::Error::NotConnected),
-                want: String::from("NotConnected"),
-            },
-            Test {
                 data: crate::Error::Internal(lapin::Error::UnexpectedReply),
                 want: String::from("UnexpectedReply"),
             },
             Test {
-                data: crate::Error::Internal(lapin::Error::PreconditionFailed),
-                want: String::from("PreconditionFailed"),
-            },
-            Test {
-                data: crate::Error::Internal(lapin::Error::ChannelLimitReached),
-                want: String::from("ChannelLimitReached"),
+                data: crate::Error::Internal(lapin::Error::ChannelsLimitReached),
+                want: String::from("ChannelsLimitReached"),
             },
         ];
         for t in &mut tests {
@@ -212,20 +202,12 @@ mod tests {
                 want: String::from("ConnectionRefused"),
             },
             Test {
-                data: crate::Error::Internal(lapin::Error::NotConnected),
-                want: String::from("NotConnected"),
-            },
-            Test {
                 data: crate::Error::Internal(lapin::Error::UnexpectedReply),
                 want: String::from("UnexpectedReply"),
             },
             Test {
-                data: crate::Error::Internal(lapin::Error::PreconditionFailed),
-                want: String::from("PreconditionFailed"),
-            },
-            Test {
-                data: crate::Error::Internal(lapin::Error::ChannelLimitReached),
-                want: String::from("ChannelLimitReached"),
+                data: crate::Error::Internal(lapin::Error::ChannelsLimitReached),
+                want: String::from("ChannelsLimitReached"),
             },
         ];
         for t in &mut tests {
@@ -247,20 +229,12 @@ mod tests {
                 want: crate::Error::Internal(lapin::Error::ConnectionRefused),
             },
             Test {
-                data: Some(lapin::Error::NotConnected),
-                want: crate::Error::Internal(lapin::Error::NotConnected),
-            },
-            Test {
                 data: Some(lapin::Error::UnexpectedReply),
                 want: crate::Error::Internal(lapin::Error::UnexpectedReply),
             },
             Test {
-                data: Some(lapin::Error::PreconditionFailed),
-                want: crate::Error::Internal(lapin::Error::PreconditionFailed),
-            },
-            Test {
-                data: Some(lapin::Error::ChannelLimitReached),
-                want: crate::Error::Internal(lapin::Error::ChannelLimitReached),
+                data: Some(lapin::Error::ChannelsLimitReached),
+                want: crate::Error::Internal(lapin::Error::ChannelsLimitReached),
             },
             Test {
                 data: Some(lapin::Error::InvalidChannelState(
