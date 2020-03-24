@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0 AND MIT
+use async_mq::{prelude::*, Error};
 use flatbuffers::FlatBufferBuilder;
 use futures_util::stream::StreamExt;
-use async_mq::{prelude::*, Error};
 
 pub enum Runtime {
     TokioThreaded,

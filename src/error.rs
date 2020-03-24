@@ -74,6 +74,10 @@ impl Error {
                 LapinErr::InvalidChannel(b) => a == b,
                 _ => false,
             },
+            LapinErr::InvalidBodyReceived => match b {
+                LapinErr::InvalidBodyReceived => true,
+                _ => false,
+            },
             LapinErr::ConnectionRefused => match b {
                 LapinErr::ConnectionRefused => true,
                 _ => false,
@@ -112,6 +116,10 @@ impl Error {
             },
             LapinErr::IOError(a) => match b {
                 LapinErr::IOError(b) => a.kind() == b.kind(),
+                _ => false,
+            },
+            LapinErr::ProtocolError(a1, a2) => match b {
+                LapinErr::ProtocolError(b1, b2) => a1 == b1 && a2 == b2,
                 _ => false,
             },
             LapinErr::__Nonexhaustive => match b {
