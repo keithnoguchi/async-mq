@@ -79,7 +79,7 @@ impl ConsumerBuilder {
         let consume = ch
             .clone()
             .basic_consume(
-                &q,
+                q.name().as_str(),
                 "consumer",
                 self.rx_opts.clone(),
                 self.field_table.clone(),

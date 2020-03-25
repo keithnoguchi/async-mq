@@ -84,10 +84,6 @@ impl Error {
                 LapinErr::InvalidFrameReceived => true,
                 _ => false,
             },
-            LapinErr::ConnectionRefused => match b {
-                LapinErr::ConnectionRefused => true,
-                _ => false,
-            },
             LapinErr::UnexpectedReply => match b {
                 LapinErr::UnexpectedReply => true,
                 _ => false,
@@ -171,10 +167,6 @@ mod tests {
         }
         let mut tests = [
             Test {
-                data: crate::Error::Internal(lapin::Error::ConnectionRefused),
-                want: String::from("ConnectionRefused"),
-            },
-            Test {
                 data: crate::Error::Internal(lapin::Error::UnexpectedReply),
                 want: String::from("UnexpectedReply"),
             },
@@ -198,10 +190,6 @@ mod tests {
         }
         let mut tests = [
             Test {
-                data: crate::Error::Internal(lapin::Error::ConnectionRefused),
-                want: String::from("ConnectionRefused"),
-            },
-            Test {
                 data: crate::Error::Internal(lapin::Error::UnexpectedReply),
                 want: String::from("UnexpectedReply"),
             },
@@ -224,10 +212,6 @@ mod tests {
             want: crate::Error,
         }
         let mut tests = [
-            Test {
-                data: Some(lapin::Error::ConnectionRefused),
-                want: crate::Error::Internal(lapin::Error::ConnectionRefused),
-            },
             Test {
                 data: Some(lapin::Error::UnexpectedReply),
                 want: crate::Error::Internal(lapin::Error::UnexpectedReply),
