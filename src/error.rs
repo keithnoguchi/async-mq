@@ -112,8 +112,8 @@ impl Error {
                 LapinErr::IOError(b) => a.kind() == b.kind(),
                 _ => false,
             },
-            LapinErr::ProtocolError(a1, a2) => match b {
-                LapinErr::ProtocolError(b1, b2) => a1 == b1 && a2 == b2,
+            LapinErr::ProtocolError(a) => match b {
+                LapinErr::ProtocolError(b) => a == b,
                 _ => false,
             },
             LapinErr::__Nonexhaustive => match b {
@@ -307,12 +307,6 @@ mod tests {
                 want: crate::Error::Internal(lapin::Error::InvalidConnectionState(
                     lapin::ConnectionState::Error,
                 )),
-            },
-            Test {
-                data: Some(lapin::Error::ParsingError(String::from("parse error"))),
-                want: crate::Error::Internal(lapin::Error::ParsingError(String::from(
-                    "parse error",
-                ))),
             },
             Test {
                 data: Some(lapin::Error::SerialisationError(Arc::new(
