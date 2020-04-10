@@ -202,7 +202,7 @@ impl ASCIIGenerator {
         loop {
             // Generate ASCII character FlatBuffer messages
             // and print the received message to stderr.
-            for data in { b'!'..=b'~' } {
+            for data in b'!'..=b'~' {
                 let req = Self::make_buf(&mut builder, vec![data]);
                 let resp = self.0.rpc(req).await?;
                 Self::print_buf(resp);

@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0 AND MIT
 [package]
 name = "async-mq"
-version = "1.1.0"
+version = "1.1.1"
 authors = ["Keith Noguchi <keith.noguchi@gmail.com>"]
 edition = "2018"
 keywords = ["async-await", "future", "amqp", "rabbitmq", "lapin"]

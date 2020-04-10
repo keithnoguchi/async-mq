@@ -73,7 +73,7 @@ dependencies = [
 
 [[package]]
 name = "async-mq"
-version = "1.1.0"
+version = "1.1.1"
 dependencies = [
  "async-trait 0.1.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "clap 2.33.0 (registry+https://github.com/rust-lang/crates.io-index)",
